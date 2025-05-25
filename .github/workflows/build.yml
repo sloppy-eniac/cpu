@@ -1,0 +1,24 @@
+# .github/workflows/build.yml
+name: Build & Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install build tools
+        run: sudo apt update && sudo apt install -y build-essential
+
+      - name: Build project
+        run: make
+
+      - name: Run test (optional)
+        run: ./main  # 또는 테스트 바이너리
