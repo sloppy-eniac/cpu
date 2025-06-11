@@ -18,7 +18,12 @@ void init_memory(Memory *memory) {
     memset(memory->data, 0, MEMORY_SIZE);
 }
 
-
+/*
+ * @brief 지정된 주소에서 값을 읽습니다 (캐시 → 메모리 Read-Through 모사)
+ * @param Memory *memory 메모리 인스턴스를 가리키는 포인터
+ * @param uint16_t address 읽을 주소
+ * @return uint8_t 읽은 값
+ */
 uint8_t memory_read(Memory *memory, uint16_t address) {
     if (address >= MEMORY_SIZE) return 0;
 
