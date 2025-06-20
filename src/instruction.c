@@ -8,13 +8,6 @@ uint8_t subtraction(uint8_t a, uint8_t b) {return a - b;}
 uint8_t multiply(uint8_t a, uint8_t b) {return a * b;}
 uint8_t divide(uint8_t a, uint8_t b) {return b != 0 ? a / b : 0;}
 
-void init_handler_table() {
-    handler_table[0x00] = add;
-    handler_table[0x01] = subtraction;
-    handler_table[0x02] = multiply;
-    handler_table[0x03] = divide;
-}
-
 /**
 * @brief 명령어 핸들러 테이블을 초기화하는 함수
 * @param 없음
@@ -32,3 +25,10 @@ void init_handler_table() {
 * result = handler_table[0x00](3, 2);  // 3 + 2 = 5
 * result = handler_table[0x01](7, 4);  // 7 - 4 = 3
 */
+void init_handler_table() {
+    handler_table[0x00] = add;
+    handler_table[0x01] = subtraction;
+    handler_table[0x02] = multiply;
+    handler_table[0x03] = divide;
+}
+
