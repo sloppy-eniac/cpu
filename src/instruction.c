@@ -15,4 +15,9 @@ void init_handler_table() {
     handler_table[0x03] = divide;
 }
 
-
+// init_handler_table 함수 설명.
+// hadler_table 배열 초기화 하는 함수.
+// 초기화 해주면 아래와 같이 사용가능해진다.
+// 예시) 실행파일에서
+//      result = instruction_table[0x00](3, 2);
+//      result = 5가 된다.
