@@ -1,6 +1,6 @@
 #include <instruction.h>
 #include <stdint.h>
-#include <alu.c>
+#include "alu.h"
 
 typedef uint8_t (*op_handler)(uint8_t, uint8_t);
 op_handler handler_table[4];

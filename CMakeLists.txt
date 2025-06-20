@@ -10,7 +10,10 @@ include_directories(include)
 include_directories(src)
 include_directories(tests)
 
-add_executable(cpu
+add_executable(
+        cpu
         docs/comment_guideline.md
         docs/folder_structure.md
-        include/memory.h)
+        include/memory.h
+        
+        )
