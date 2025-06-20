@@ -9,20 +9,15 @@
 #ifndef CPU_MEMORY_H
 #define CPU_MEMORY_H
 
+#include "include/cache.h"
+
 #include <stdint.h>
 
-#define MEMORY_SIZE 65535 // 64KB 매모리
-#define CACHE_SIZE  256 // 캐시 라인 수
+#define MEMORY_SIZE 65536 // 64KB 매모리
 
 typedef struct {
-    uint16_t address;
-    uint8_t data;
-    int valid;
-    int dirty;
-} CacheLine;
-
-typedef struct {
-    uint8_t data[MEMORY_SIZE];
+    uint8_t data[MEMORY_SIZE]; // 0x0000 ~ 0xFFFF (총 65536 바이트)
+    Cache cache;
 } Memory;
 
 void init_memory(Memory *memory);
