@@ -15,9 +15,20 @@ void init_handler_table() {
     handler_table[0x03] = divide;
 }
 
-// init_handler_table 함수 설명.
-// hadler_table 배열 초기화 하는 함수.
-// 초기화 해주면 아래와 같이 사용가능해진다.
-// 예시) 실행파일에서
-//      result = instruction_table[0x00](3, 2);
-//      result = 5가 된다.
+/**
+* @brief 명령어 핸들러 테이블을 초기화하는 함수
+* @param 없음
+* @returns 없음 (void)
+*
+* @details
+* handler_table 배열에 각 opcode에 해당하는 연산 함수들을 할당합니다.
+* - 0x00: 덧셈 연산 (add)
+* - 0x01: 뺄셈 연산 (subtraction)
+* - 0x02: 곱셈 연산 (multiply)
+* - 0x03: 나눗셈 연산 (divide)
+*
+* @example
+* init_handler_table();  // 테이블 초기화
+* result = handler_table[0x00](3, 2);  // 3 + 2 = 5
+* result = handler_table[0x01](7, 4);  // 7 - 4 = 3
+*/
