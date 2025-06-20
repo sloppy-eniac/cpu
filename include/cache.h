@@ -12,19 +12,19 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#define CACHE_SIZE 256          // 캐시 라인 수
-#define CACHE_INVALID 0
-#define CACHE_VALID   1
+#define CACHE_LINE_SIZE     4U       /* 4 B 1블록 */
+#define CACHE_NUM_LINES     64U      /* 총 64라인 → 256 B */
+#define CACHE_ASSOCIATIVITY 1U       /* direct-mapped */
 
 typedef struct {
-    uint16_t address;   // 메모리 상 실제 주소(태그 역할)
-    uint8_t  data;      // 1-바이트 데이터(간단화를 위해 라인 크기를 1 B로 가정)
-    uint8_t  valid;     // 0: invalid, 1: valid
-    uint8_t  dirty;     // 0: clean,   1: dirty (write-back 필요)
+    uint16_t tag;                    /* 태그 필드 */
+    uint8_t block[CACHE_LINE_SIZE];  /* 캐시 라인 데이터 */
+    uint8_t valid;                   /* 유효한 캐시 라인인가? */
+    uint8_t dirty;                   /* 메모리에 반영되어있는 값인가? */
 } CacheLine;
 
 typedef struct {
-    CacheLine lines[CACHE_SIZE];
+    CacheLine lines[CACHE_NUM_LINES];
 } Cache;
 
 /* 초기화 및 유지보수 */
