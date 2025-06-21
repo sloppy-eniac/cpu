@@ -2,7 +2,9 @@
   "files.associations": {
     "cstdint": "c",
     "alu.h": "c",
-    "stdint.h": "c"
+    "stdint.h": "c",
+    "flags.h": "c",
+    "stdbool.h": "c"
   },
   "C_Cpp.default.compilerPath": "c:\\MinGW\\bin\\g++.exe"
 }
