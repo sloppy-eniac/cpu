@@ -90,7 +90,6 @@ void decode_and_execute(uint16_t instruction) {
         // 결과를 register1에 저장 (누적)
         regs.register1 = result;
         regs.register2 = operand2;
-        regs.register3 = result;
         
         printf("연산: %s %d, %d = %d (register1 누적)\n", 
                (opcode == 0) ? "ADD" : (opcode == 1) ? "SUB" : (opcode == 2) ? "MUL" : "DIV",
