@@ -42,14 +42,14 @@ typedef struct {
 } Instruction;
 
 /* MOV EAX, imm32 인코딩 */
-static inline int encode_mov_reg_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
+int encode_mov_reg_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
     // MOV r32, imm32 포맷: 1011 1rrr (rrr = 레지스터 번호)
     buffer[0] = 0xB8 | (reg & 0x07);  // 0xB8 + 레지스터 번호
     encode_imm32(imm, buffer + 1);     // 32비트 상수 (리틀 엔디안)
     return 5;  // opcode(1) + imm32(4)
 }
 
-static inline int encode_instruction(const Instruction* instr, uint8_t* buffer) {
+int encode_instruction(const Instruction* instr, uint8_t* buffer) {
     switch (instr->type) {
         case OP_MOV_REG_IMM:
             return encode_mov_reg_imm(instr->dest_reg, instr->immediate, buffer);
