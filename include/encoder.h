@@ -57,5 +57,6 @@ int encode_instruction(const Instruction* instr, uint8_t* buffer) {
             return -1;  // 지원하지 않는 명령어
     }
 }
+
 #endif
 
