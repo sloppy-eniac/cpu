@@ -35,7 +35,7 @@ typedef enum {
 typedef struct {
     OpcodeType type;     // 실행할 명령어의 종류
     
-    Reg dest_reg;        // 목적지 레지스터
+    Reg dest_reg;        // 목적지  
     Reg src_reg;         // 소스 레지스터 (두 개의 레지스터를 사용하는 명령어의 경우)
 
     uint32_t immediate;  // 명령어에 포함된 32비트 상수 값
