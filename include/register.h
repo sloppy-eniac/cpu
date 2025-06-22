@@ -15,7 +15,7 @@
 // 다음 리스트는 그저 권장사항일 뿐이지, 사용하는 방법은 상관없다.
 typedef struct
 {
-    uint8_t pc;        // 누산기: 산술 연산, 데이터 저장
+    uint16_t pc;        // 누산기: 산술 연산, 데이터 저장
     uint8_t register1; // 베이스: 메모리 주소 지정 시 베이스 주소로 사용
     uint8_t register2; // 카운터: 반복(LOOP) 명령어 등에서 카운터로 사용
     uint8_t register3; // 데이터: 곱셈/나눗셈에서 EAX 보조, I/O 주소 지정
