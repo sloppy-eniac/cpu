@@ -1,10 +1,11 @@
-/* include/decoder.h - 기계어 디코더 인터페이스 정의
+/* include/decoder.h - 명령어 디코딩/인코딩 헤더
  * ------------------------------------------------------------
- * 메모리로부터 읽어온 바이트 코드를 CPU가 실행할 수 있는 구조체로 변환합니다.
- * 이 헤더는 디코더와 CPU 코어 사이의 핵심 소통 수단 역할을 합니다.
+ * 바이너리 명령어와 구조체 간 변환 기능 제공
+ * - decode(): 바이너리 → 구조체
+ * - encode(): 구조체 → 바이너리
  * Test Case: tests/decoder_test.c
- * Author: Shin yujun
-*/
+ * Author: Cascade
+ */
 
 #ifndef DECODER_H
 #define DECODER_H
@@ -40,18 +41,21 @@ typedef struct {
     uint32_t immediate;  // 명령어에 포함된 32비트 상수 값
 } Instruction;
 
-/*
- * @brief 프로그램 카운터(pc)가 가리키는 메모리 주소에서 명령어를 해석합니다.
- * @param uint32_t pc 실행할 명령어의 메모리 주소
- * @param Instruction* instr 디코딩된 결과가 채워질 Instruction 구조체의 포인터
- * @returns int 해석된 명령어의 총 길이(bytes). CPU 코어는 이 값만큼 EIP를 증가시켜야 합니다.
- */
-int decode(uint32_t pc, Instruction* instr);
+/* MOV EAX, imm32 인코딩 */
+static inline int encode_mov_reg_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
+    // MOV r32, imm32 포맷: 1011 1rrr (rrr = 레지스터 번호)
+    buffer[0] = 0xB8 | (reg & 0x07);  // 0xB8 + 레지스터 번호
+    encode_imm32(imm, buffer + 1);     // 32비트 상수 (리틀 엔디안)
+    return 5;  // opcode(1) + imm32(4)
+}
 
+static inline int encode_instruction(const Instruction* instr, uint8_t* buffer) {
+    switch (instr->type) {
+        case OP_MOV_REG_IMM:
+            return encode_mov_reg_imm(instr->dest_reg, instr->immediate, buffer);
+        default:
+            return -1;  // 지원하지 않는 명령어
+    }
+}
 #endif
 
-//예시
-//printf("테스트 2: MOV EAX, 0x1234");
-//pc += len; // EIP를 다음 명령어 위치로 이동
-//Instruction instr2;
-//int len2 = decode(pc, &instr2);
