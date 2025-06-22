@@ -11,7 +11,7 @@
 
 #include <stdint.h>
 
-// 범용 레지스터 
+// 범용 레지스터
 // 다음 리스트는 그저 권장사항일 뿐이지, 사용하는 방법은 상관없다.
 typedef struct
 {
@@ -25,4 +25,26 @@ typedef struct
     uint8_t register7; // 스택 포인터: 스택의 가장 윗부분을 가리킴 (PUSH, POP)
 } CPU_Registers;
 
-#endif
+// 레지스터 번호 상수 (0~7)
+enum {
+    REG_PC = 0,    // 프로그램 카운터
+    REG_R1 = 1,    // 범용 레지스터 1
+    REG_R2 = 2,    // 범용 레지스터 2
+    REG_R3 = 3,    // 범용 레지스터 3
+    REG_R4 = 4,    // 범용 레지스터 4
+    REG_R5 = 5,    // 범용 레지스터 5
+    REG_R6 = 6,    // 범용 레지스터 6
+    REG_R7 = 7     // 범용 레지스터 7
+};
+
+// 레지스터에 값 설정
+void set_register(CPU_Registers* regs, uint8_t reg_num, uint8_t value);
+//몇번째에 무슨 값 넣을건지
+
+// 레지스터에서 값 읽기
+uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num);
+
+// 모든 레지스터를 0으로 초기화
+void reset_registers(CPU_Registers* regs);
+
+#endif // REGISTER_H
