@@ -4,7 +4,8 @@
     "alu.h": "c",
     "stdint.h": "c",
     "flags.h": "c",
-    "stdbool.h": "c"
+    "stdbool.h": "c",
+    "cache.h": "c"
   },
   "C_Cpp.default.compilerPath": "c:\\MinGW\\bin\\g++.exe"
 }
