@@ -41,8 +41,15 @@ typedef struct {
     uint32_t immediate;  // 명령어에 포함된 32비트 상수 값
 } Instruction;
 
+void encode_imm32(uint32_t value, uint8_t* buffer) {
+    buffer[0] = (uint8_t)(value & 0xFF);         // 최하위 바이트
+    buffer[1] = (uint8_t)((value >> 8) & 0xFF);
+    buffer[2] = (uint8_t)((value >> 16) & 0xFF);
+    buffer[3] = (uint8_t)((value >> 24) & 0xFF); // 최상위 바이트
+}
+
 /* MOV EAX, imm32 인코딩 */
-int encode_mov_reg_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
+int encode_mov_eax_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
     // MOV r32, imm32 포맷: 1011 1rrr (rrr = 레지스터 번호)
     buffer[0] = 0xB8 | (reg & 0x07);  // 0xB8 + 레지스터 번호
     encode_imm32(imm, buffer + 1);     // 32비트 상수 (리틀 엔디안)
@@ -51,8 +58,8 @@ int encode_mov_reg_imm(Reg reg, uint32_t imm, uint8_t* buffer) {
 
 int encode_instruction(const Instruction* instr, uint8_t* buffer) {
     switch (instr->type) {
-        case OP_MOV_REG_IMM:
-            return encode_mov_reg_imm(instr->dest_reg, instr->immediate, buffer);
+        case MOV_EAX_IMM:
+            return encode_mov_eax_imm(instr->dest_reg, instr->immediate, buffer);
         default:
             return -1;  // 지원하지 않는 명령어
     }
