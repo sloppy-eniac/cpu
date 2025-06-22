@@ -13,10 +13,10 @@
 
 #include <stdint.h>
 
-#define MEMORY_SIZE 65536 // 64KB 매모리
+#define MEMORY_SIZE 256 // 256B 매모리
 
 typedef struct {
-    uint8_t data[MEMORY_SIZE]; // 0x0000 ~ 0xFFFF (총 65536 바이트)
+    uint8_t data[MEMORY_SIZE];
     Cache cache;
 } Memory;
 
