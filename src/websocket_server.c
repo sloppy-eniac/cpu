@@ -166,8 +166,8 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
     else if (strcmp(instruction, "MOV") == 0) opcode = 4;
     else return 0;
     
-    // 16비트 명령어 생성: 4비트 opcode + 6비트 reg1 + 6비트 reg2
-    uint16_t instruction_word = (opcode << 12) | ((reg1 & 0x3F) << 6) | (reg2 & 0x3F);
+    // 16비트 명령어 생성: 4비트 opcode + 8비트 reg1 + 4비트 reg2 (MOV는 더 큰 값 지원)
+    uint16_t instruction_word = (opcode << 12) | ((reg1 & 0xFF) << 4) | (reg2 & 0xF);
     
     output_bytes[0] = (instruction_word >> 8) & 0xFF;
     output_bytes[1] = instruction_word & 0xFF;
@@ -186,8 +186,8 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
     
     // 필드 추출
     uint8_t opcode = (instruction_word >> 12) & 0xF;
-    uint8_t reg1 = (instruction_word >> 6) & 0x3F;
-    uint8_t reg2 = instruction_word & 0x3F;
+    uint8_t reg1 = (instruction_word >> 4) & 0xFF;
+    uint8_t reg2 = instruction_word & 0xF;
     
     // opcode에 따른 명령어 문자열 생성
     const char* op_name;

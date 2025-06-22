@@ -65,10 +65,10 @@ uint16_t fetch_instruction(void) {
 
 // 명령어 디코드 및 실행
 void decode_and_execute(uint16_t instruction) {
-    // 비트 분리: 4비트 opcode, 6비트 reg1, 6비트 reg2
+    // 비트 분리: 4비트 opcode, 8비트 reg1, 4비트 reg2 (최대 255까지 지원)
     uint8_t opcode = (instruction >> 12) & 0xF;
-    uint8_t reg1_val = (instruction >> 6) & 0x3F; // 6비트
-    uint8_t reg2_val = instruction & 0x3F;       // 6비트
+    uint8_t reg1_val = (instruction >> 4) & 0xFF; // 8비트 (0-255)
+    uint8_t reg2_val = instruction & 0xF;         // 4비트 (0-15) - 주소용
 
     // ALU 연산 (opcode가 0~3 범위 내일 때) - 누적 계산 방식
     if (opcode < 4) {
@@ -97,14 +97,15 @@ void decode_and_execute(uint16_t instruction) {
                operand1, operand2, result);
         
     } else if (opcode == 4) {
-        // MOV 명령어: reg1_val을 메모리 주소 reg2_val에 직접 저장 (캐시 우회)
-        if (reg2_val < MEMORY_SIZE) {
+        // MOV 명령어: reg1_val을 메모리 주소 (50 + reg2_val)에 직접 저장 (확장된 주소 공간)
+        uint8_t target_address = 50 + reg2_val; // 50~65 범위로 확장
+        if (target_address < MEMORY_SIZE) {
             // 캐시를 거치지 않고 직접 메모리에 저장
-            memory.data[reg2_val] = reg1_val;
-            printf("MOV: 값 %d를 메모리 주소 %d에 직접 저장\n", reg1_val, reg2_val);
+            memory.data[target_address] = reg1_val;
+            printf("MOV: 값 %d를 메모리 주소 %d에 직접 저장\n", reg1_val, target_address);
         }
         regs.register1 = reg1_val;
-        regs.register2 = reg2_val;
+        regs.register2 = target_address;
     }
 
     // PC값 2 증가 (명령어 2바이트 소모)
