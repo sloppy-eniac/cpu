@@ -43,6 +43,7 @@ void set_register(CPU_Registers* regs, uint8_t reg_num, uint8_t value);
 
 // 레지스터에서 값 읽기
 uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num);
+//몇번쨰 불러올건지
 
 // 모든 레지스터를 0으로 초기화
 void reset_registers(CPU_Registers* regs);
