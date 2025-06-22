@@ -6,6 +6,13 @@
  * 하고싶은말: 내 코드지만 정말 아름답다
  */
 
+#ifndef INSTRUCTION_H
+#define INSTRUCTION_H
+
+#include <stdint.h>
+
 typedef uint8_t (*op_handler)(uint8_t, uint8_t);
 
 void init_handler_table();
+
+#endif // INSTRUCTION_H

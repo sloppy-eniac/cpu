@@ -2,7 +2,7 @@
 #include <stdint.h>
 #include "alu.h"
 
-typedef uint8_t (*op_handler)(uint8_t, uint8_t);
+// ALU 핸들러 테이블 전역 변수
 op_handler handler_table[4];
 
 /**
