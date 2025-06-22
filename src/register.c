@@ -29,7 +29,7 @@ void set_register(CPU_Registers* regs, uint8_t reg_num, uint8_t value) {
  * @param reg_num 읽을 레지스터 번호 (0~7)
  * @return 레지스터 값 (8비트), 잘못된 입력 시 0 반환
  */
- 
+
 uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num) {
     if (!regs) return 0;
     
