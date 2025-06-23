@@ -2,11 +2,23 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+/*
+ * @brief 덧셈 연산에서 캐리 플래그를 설정합니다
+ * @param a 첫 번째 피연산자
+ * @param result 덧셈 결과
+ * @returns 없음 (void)
+ */
 void add_flag(uint8_t a, uint8_t result)
 {
     *cf = (result < a);  // 오버플로우 검사: 결과가 첫 번째 피연산자보다 작으면 캐리 발생
 }
 
+/*
+ * @brief 뺄셈 연산에서 캐리 플래그를 설정합니다
+ * @param a 피감수 (첫 번째 피연산자)
+ * @param b 감수 (두 번째 피연산자)
+ * @returns 없음 (void)
+ */
 void subtraction_flag(uint8_t a, uint8_t b)
 {
     *cf = (a < b);  // 언더플로우 검사: 첫 번째 피연산자가 두 번째보다 작으면 캐리 발생

@@ -1,13 +1,13 @@
 #include "register.h"
 #include <stdint.h>
 
-/**
- * @brief 레지스터에 값을 설정합니다.
+/*
+ * @brief 레지스터에 값을 설정합니다
  * @param regs 대상 레지스터 구조체 포인터
  * @param reg_num 설정할 레지스터 번호 (0~7)
  * @param value 설정할 값 (8비트)
+ * @returns 없음 (void)
  */
-
 void set_register(CPU_Registers* regs, uint8_t reg_num, uint8_t value) {
     if (!regs) return;
     
@@ -23,13 +23,12 @@ void set_register(CPU_Registers* regs, uint8_t reg_num, uint8_t value) {
     }
 }
 
-/**
- * @brief 레지스터에서 값을 읽어옵니다.
+/*
+ * @brief 레지스터에서 값을 읽어옵니다
  * @param regs 레지스터 구조체 포인터
  * @param reg_num 읽을 레지스터 번호 (0~7)
- * @return 레지스터 값 (8비트), 잘못된 입력 시 0 반환
+ * @returns 레지스터 값 (8비트), 잘못된 입력 시 0 반환
  */
-
 uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num) {
     if (!regs) return 0;
     
@@ -46,11 +45,11 @@ uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num) {
     }
 }
 
-/**
- * @brief 모든 레지스터를 0으로 초기화합니다.
+/*
+ * @brief 모든 레지스터를 0으로 초기화합니다
  * @param regs 초기화할 레지스터 구조체 포인터
+ * @returns 없음 (void)
  */
-
 void reset_registers(CPU_Registers* regs) {
     if (!regs) return;
     regs->pc = 0;

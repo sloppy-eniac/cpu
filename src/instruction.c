@@ -5,8 +5,8 @@
 // ALU 핸들러 테이블 전역 변수
 op_handler handler_table[4];
 
-/**
- * @brief 명령어 핸들러 테이블을 초기화하는 함수
+/*
+ * @brief ALU 핸들러 테이블을 초기화합니다
  * @param 없음
  * @returns 없음 (void)
  *

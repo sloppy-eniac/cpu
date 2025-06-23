@@ -28,7 +28,11 @@ static struct lws_protocols protocols[] = {
     { NULL, NULL, 0, 0 } // 종료자
 };
 
-// WebSocket 서버 초기화
+/*
+ * @brief WebSocket 서버를 초기화합니다
+ * @param port 서버 포트 번호
+ * @returns 초기화 성공 시 0, 실패 시 -1
+ */
 int ws_server_init(int port) {
     struct lws_context_creation_info info;
     

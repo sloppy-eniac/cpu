@@ -20,7 +20,11 @@ extern alu_handler handler_table[4];
 // CPU 상태 변수
 static int cpu_initialized = 0;
 
-// CPU 초기화
+/*
+ * @brief CPU를 초기화합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void cpu_init(void) {
     if (!cpu_initialized) {
         // 메모리 초기화
@@ -38,7 +42,11 @@ void cpu_init(void) {
     }
 }
 
-// CPU 리셋
+/*
+ * @brief CPU를 리셋합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void cpu_reset(void) {
     reset_registers(&regs);
     regs.pc = 0;
@@ -46,14 +54,23 @@ void cpu_reset(void) {
     cache_init(&memory.cache);
 }
 
-// 메모리에 프로그램 로드
+/*
+ * @brief 메모리에 프로그램을 로드합니다
+ * @param program 로드할 프로그램 바이트 배열
+ * @param size 프로그램 크기 (바이트)
+ * @returns 없음 (void)
+ */
 void cpu_load_program(const uint8_t* program, size_t size) {
     if (size <= MEMORY_SIZE) {
         memcpy(memory.data, program, size);
     }
 }
 
-// 명령어 패치
+/*
+ * @brief 현재 PC 위치에서 명령어를 패치합니다
+ * @param 없음
+ * @returns 패치된 16비트 명령어
+ */
 uint16_t fetch_instruction(void) {
     if (regs.pc >= MEMORY_SIZE - 1) {
         return 0; // 메모리 범위 초과
@@ -63,7 +80,11 @@ uint16_t fetch_instruction(void) {
     return inst;
 }
 
-// 명령어 디코드 및 실행 (MOV 레지스터 저장 확실히 구현)
+/*
+ * @brief 명령어를 디코드하고 실행합니다
+ * @param instruction 실행할 16비트 명령어
+ * @returns 없음 (void)
+ */
 void decode_and_execute(uint16_t instruction) {
     // 4비트 opcode 추출
     uint8_t opcode = (instruction >> 12) & 0xF;
@@ -239,7 +260,11 @@ void decode_and_execute(uint16_t instruction) {
     printf("====================\n\n");
 }
 
-// 한 단계 실행
+/*
+ * @brief CPU를 한 단계 실행합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void cpu_step(void) {
     if (regs.pc >= MEMORY_SIZE - 1) {
         return; // 프로그램 종료
@@ -251,7 +276,11 @@ void cpu_step(void) {
     }
 }
 
-// 연속 실행 (기존 함수)
+/*
+ * @brief CPU를 연속으로 실행합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void cpu_run(void) {
     // 프로그램 실행 루프
     for (int i = 0; i < 4 && regs.pc < MEMORY_SIZE - 1; i++) {
@@ -259,7 +288,11 @@ void cpu_run(void) {
     }
 }
 
-// 샘플 프로그램으로 CPU 실행 (기존 함수 유지)
+/*
+ * @brief 샘플 프로그램으로 CPU를 실행합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void cpu(void) {
     // 샘플 프로그램 버퍼
     uint8_t sample_program[] = {
@@ -274,7 +307,11 @@ void cpu(void) {
     cpu_run();
 }
 
-// CPU 상태를 출력하는 함수 (디버깅용)
+/*
+ * @brief CPU 상태를 출력합니다 (디버깅용)
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void print_cpu_state() {
     printf("PC: %d\n", regs.pc);
     printf("Register1: %d\n", regs.register1);
@@ -282,12 +319,20 @@ void print_cpu_state() {
     printf("Register3: %d\n", regs.register3);
 }
 
-// CPU 레지스터 포인터 반환
+/*
+ * @brief CPU 레지스터 포인터를 반환합니다
+ * @param 없음
+ * @returns CPU 레지스터 구조체 포인터
+ */
 CPU_Registers* get_cpu_registers(void) {
     return &regs;
 }
 
-// CPU 메모리 포인터 반환
+/*
+ * @brief CPU 메모리 포인터를 반환합니다
+ * @param 없음
+ * @returns 메모리 구조체 포인터
+ */
 Memory* get_cpu_memory(void) {
     return &memory;
 }

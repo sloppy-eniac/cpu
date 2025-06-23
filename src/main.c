@@ -5,13 +5,23 @@
 #include <signal.h>
 #include <unistd.h>
 
-// 신호 처리기
+/*
+ * @brief 신호 처리기 - 서버 종료 시 정리 작업을 수행합니다
+ * @param sig 신호 번호
+ * @returns 없음 (void)
+ */
 static void signal_handler(int sig) {
     printf("\n서버를 종료합니다...\n");
     ws_server_cleanup();
     exit(0);
 }
 
+/*
+ * @brief 프로그램 메인 함수
+ * @param argc 명령줄 인자 개수
+ * @param argv 명령줄 인자 배열
+ * @returns 프로그램 종료 상태 (int)
+ */
 int main(int argc, char *argv[]) {
     int port = WS_PORT;
     

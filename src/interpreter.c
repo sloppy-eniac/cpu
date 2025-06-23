@@ -13,6 +13,11 @@ Instruction mov_command = {
 uint8_t buffer[10];
 //여기다 저장되는거임
 
+/*
+ * @brief 명령어를 인코딩합니다
+ * @param 없음
+ * @returns 인코딩 완료 상태 (int)
+ */
 int encode() {
     int bytes = encode_instruction(&mov_command, buffer); 
     return 0;  // 명시적 반환
