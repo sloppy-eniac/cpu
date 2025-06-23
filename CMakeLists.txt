@@ -10,8 +10,10 @@ find_package(OpenSSL REQUIRED)
 # 수동으로 라이브러리 경로 설정
 set(LIBWEBSOCKETS_INCLUDE_DIR "/opt/homebrew/Cellar/libwebsockets/4.3.5/include")
 set(LIBWEBSOCKETS_LIBRARY "/opt/homebrew/Cellar/libwebsockets/4.3.5/lib/libwebsockets.dylib")
-set(JSON_C_INCLUDE_DIR "/opt/homebrew/Cellar/json-c/0.18/include")
-set(JSON_C_LIBRARY "/opt/homebrew/Cellar/json-c/0.18/lib/libjson-c.dylib")
+
+# pkg-config를 사용하여 JSON-C 찾기
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(JSON_C REQUIRED json-c)
 
 include_directories(.)
 include_directories(assets)
@@ -20,7 +22,7 @@ include_directories(include)
 include_directories(src)
 include_directories(tests)
 include_directories(${LIBWEBSOCKETS_INCLUDE_DIR})
-include_directories(${JSON_C_INCLUDE_DIR})
+include_directories(${JSON_C_INCLUDE_DIRS})
 
 # OpenSSL include 경로 추가
 if(OPENSSL_FOUND)
@@ -48,7 +50,7 @@ add_executable(
 # 라이브러리 링크
 target_link_libraries(cpu 
     ${LIBWEBSOCKETS_LIBRARY}
-    ${JSON_C_LIBRARY}
+    ${JSON_C_LIBRARIES}
     ${OPENSSL_LIBRARIES}
     pthread
 )

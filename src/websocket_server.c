@@ -134,28 +134,31 @@ static void broadcast_message(const char* message) {
     pthread_mutex_unlock(&server_ctx.mutex);
 }
 
-// 어셈블리 코드를 바이트로 디코딩
+// 레지스터 이름을 번호로 변환
+int parse_register(const char* reg_str) {
+    if (reg_str[0] == 'R' && strlen(reg_str) == 2) {
+        int reg_num = reg_str[1] - '0';
+        if (reg_num >= 1 && reg_num <= 7) {
+            return reg_num; // R1=1, R2=2, ..., R7=7
+        }
+    }
+    return -1; // 레지스터가 아님
+}
+
+// 어셈블리 코드를 바이트로 디코딩 (MOV 명령어 확실히 지원)
 int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int max_length) {
-    // 간단한 어셈블리 파서 구현
-    // 예: "ADD 1, 5" -> 0x01, 0x05
-    // 예: "SUB 3, 7" -> 0x23, 0x07
-    // 예: "ADD 10" -> 0x0A, 0x00 (단일 피연산자)
-    
     if (!assembly || !output_bytes || max_length < 2) {
         return 0;
     }
     
     char instruction[32];
-    int reg1, reg2 = 0;
+    char operand1_str[32], operand2_str[32];
     
-    // 두 개의 피연산자를 시도
-    int parsed = sscanf(assembly, "%s %d, %d", instruction, &reg1, &reg2);
+    int parsed = sscanf(assembly, "%s %31[^,], %31s", instruction, operand1_str, operand2_str);
     
-    // 한 개의 피연산자만 있는 경우
-    if (parsed == 2) {
-        reg2 = 0; // 두 번째 피연산자는 0으로 설정
-    } else if (parsed != 3) {
-        return 0; // 파싱 실패
+    if (parsed < 2) {
+        printf("❌ 파싱 실패: %s\n", assembly);
+        return 0;
     }
     
     uint8_t opcode = 0;
@@ -164,32 +167,117 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
     else if (strcmp(instruction, "MUL") == 0) opcode = 2;
     else if (strcmp(instruction, "DIV") == 0) opcode = 3;
     else if (strcmp(instruction, "MOV") == 0) opcode = 4;
-    else return 0;
+    else {
+        printf("❌ 알 수 없는 명령어: %s\n", instruction);
+        return 0;
+    }
     
-    // 16비트 명령어 생성: 4비트 opcode + 8비트 reg1 + 4비트 reg2 (MOV는 더 큰 값 지원)
-    uint16_t instruction_word = (opcode << 12) | ((reg1 & 0xFF) << 4) | (reg2 & 0xF);
+    // 🎯 MOV 명령어 특별 처리 (레지스터 + 8비트 즉시값 지원)
+    if (opcode == 4) {
+        // MOV 레지스터, 즉시값 형태 처리
+        if (operand1_str[0] == 'R' && strlen(operand1_str) == 2) {
+            int reg_num = operand1_str[1] - '0';
+            if (reg_num >= 1 && reg_num <= 7) {
+                int immediate_val = atoi(operand2_str);
+                if (immediate_val < 0 || immediate_val > 255) {
+                    printf("❌ 즉시값 범위 오류 (0-255): %d\n", immediate_val);
+                    return 0;
+                }
+                
+                // MOV 레지스터, 즉시값: 4비트 opcode + 4비트 레지스터 + 8비트 즉시값
+                uint16_t instruction_word = (opcode << 12) | (reg_num << 8) | (immediate_val & 0xFF);
+                
+                output_bytes[0] = (instruction_word >> 8) & 0xFF;
+                output_bytes[1] = instruction_word & 0xFF;
+                
+                printf("🎯 MOV 인코딩: %s -> 레지스터=%d, 즉시값=%d -> 바이트: 0x%02X 0x%02X\n", 
+                       assembly, reg_num, immediate_val, output_bytes[0], output_bytes[1]);
+                
+                return 2;
+            } else {
+                printf("❌ 잘못된 레지스터: %s\n", operand1_str);
+                return 0;
+            }
+        }
+        // MOV 메모리, 즉시값 형태는 기존 방식 사용
+        else {
+            uint8_t reg1_val = atoi(operand1_str);
+            uint8_t reg2_val = (parsed == 3) ? atoi(operand2_str) : 0;
+            
+            if (reg1_val > 63) reg1_val = 63;
+            if (reg2_val > 63) reg2_val = 63;
+            
+            uint16_t instruction_word = (opcode << 12) | ((reg1_val & 0x3F) << 6) | (reg2_val & 0x3F);
+            
+            output_bytes[0] = (instruction_word >> 8) & 0xFF;
+            output_bytes[1] = instruction_word & 0xFF;
+            
+            printf("📊 MOV 메모리 인코딩: %s -> 바이트: 0x%02X 0x%02X\n", assembly, output_bytes[0], output_bytes[1]);
+            return 2;
+        }
+    }
+    
+    // 다른 명령어들 (기존 방식)
+    uint8_t reg1_val, reg2_val = 0;
+    
+    // 첫 번째 피연산자: 레지스터인지 확인
+    if (operand1_str[0] == 'R' && strlen(operand1_str) == 2) {
+        int reg_num = operand1_str[1] - '0';
+        if (reg_num >= 1 && reg_num <= 7) {
+            reg1_val = 100 + reg_num;  // R1=101, R2=102, ..., R7=107
+            printf("🎯 첫 번째: %s -> 인코딩 %d\n", operand1_str, reg1_val);
+        } else {
+            printf("❌ 잘못된 레지스터: %s\n", operand1_str);
+            return 0;
+        }
+    } else {
+        reg1_val = atoi(operand1_str);
+        if (reg1_val > 63) reg1_val = 63;
+        printf("📊 첫 번째: 즉시값 %d\n", reg1_val);
+    }
+    
+    // 두 번째 피연산자
+    if (parsed == 3) {
+        if (operand2_str[0] == 'R' && strlen(operand2_str) == 2) {
+            int reg_num = operand2_str[1] - '0';
+            if (reg_num >= 1 && reg_num <= 7) {
+                reg2_val = 100 + reg_num;
+                printf("🎯 두 번째: %s -> 인코딩 %d\n", operand2_str, reg2_val);
+            } else {
+                printf("❌ 잘못된 레지스터: %s\n", operand2_str);
+                return 0;
+            }
+        } else {
+            reg2_val = atoi(operand2_str);
+            if (reg2_val > 63) reg2_val = 63;
+            printf("📊 두 번째: 즉시값 %d\n", reg2_val);
+        }
+    }
+    
+    // 인코딩
+    uint16_t instruction_word = (opcode << 12) | ((reg1_val & 0x3F) << 6) | (reg2_val & 0x3F);
     
     output_bytes[0] = (instruction_word >> 8) & 0xFF;
     output_bytes[1] = instruction_word & 0xFF;
     
+    printf("파싱 성공: %s -> 바이트: 0x%02X 0x%02X\n", assembly, output_bytes[0], output_bytes[1]);
+    
     return 2;
 }
 
-// 바이트를 어셈블리 코드로 변환 (역변환)
+// 바이트를 어셈블리 코드로 변환
 int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_assembly, int max_length) {
     if (!bytes || byte_count < 2 || !output_assembly || max_length < 32) {
         return 0;
     }
     
-    // 16비트 명령어 재구성
     uint16_t instruction_word = (bytes[0] << 8) | bytes[1];
     
-    // 필드 추출
+    // **원래 방식 그대로**: 4비트 opcode + 6비트 reg1 + 6비트 reg2
     uint8_t opcode = (instruction_word >> 12) & 0xF;
-    uint8_t reg1 = (instruction_word >> 4) & 0xFF;
-    uint8_t reg2 = instruction_word & 0xF;
+    uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
+    uint8_t reg2_val = instruction_word & 0x3F;
     
-    // opcode에 따른 명령어 문자열 생성
     const char* op_name;
     switch (opcode) {
         case 0: op_name = "ADD"; break;
@@ -200,11 +288,25 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
         default: return 0;
     }
     
-    snprintf(output_assembly, max_length, "%s %d, %d", op_name, reg1, reg2);
+    char reg1_str[16], reg2_str[16];
+    
+    if (reg1_val > 100) {
+        snprintf(reg1_str, sizeof(reg1_str), "R%d", reg1_val - 100);
+    } else {
+        snprintf(reg1_str, sizeof(reg1_str), "%d", reg1_val);
+    }
+    
+    if (reg2_val > 100) {
+        snprintf(reg2_str, sizeof(reg2_str), "R%d", reg2_val - 100);
+    } else {
+        snprintf(reg2_str, sizeof(reg2_str), "%d", reg2_val);
+    }
+    
+    snprintf(output_assembly, max_length, "%s %s, %s", op_name, reg1_str, reg2_str);
     return 1;
 }
 
-// JSON 메시지 생성 함수들
+// JSON 메시지 생성 함수들 - 모든 레지스터 포함
 json_object* create_state_message(void) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("state");
@@ -216,11 +318,19 @@ json_object* create_state_message(void) {
     json_object *reg1 = json_object_new_int(regs->register1);
     json_object *reg2 = json_object_new_int(regs->register2);
     json_object *reg3 = json_object_new_int(regs->register3);
+    json_object *reg4 = json_object_new_int(regs->register4);
+    json_object *reg5 = json_object_new_int(regs->register5);
+    json_object *reg6 = json_object_new_int(regs->register6);
+    json_object *reg7 = json_object_new_int(regs->register7);
     
     json_object_object_add(payload, "pc", pc);
     json_object_object_add(payload, "register1", reg1);
     json_object_object_add(payload, "register2", reg2);
     json_object_object_add(payload, "register3", reg3);
+    json_object_object_add(payload, "register4", reg4);
+    json_object_object_add(payload, "register5", reg5);
+    json_object_object_add(payload, "register6", reg6);
+    json_object_object_add(payload, "register7", reg7);
     
     json_object_object_add(root, "type", type);
     json_object_object_add(root, "payload", payload);
@@ -619,6 +729,42 @@ int ws_handle_run_all(void) {
     return 0;
 }
 
+// 단일 명령어 로드 및 실행 준비
+int ws_handle_single_instruction_load(const char* assembly_code) {
+    printf("단일 명령어 로드 요청: %s\n", assembly_code);
+    
+    // CPU 리셋 (이전 상태 초기화)
+    cpu_reset();
+    
+    // 어셈블리 코드를 바이트로 변환
+    uint8_t bytes[256];
+    int byte_count = decode_assembly_to_bytes(assembly_code, bytes, sizeof(bytes));
+    
+    if (byte_count <= 0) {
+        ws_send_error("명령어 파싱 실패");
+        return -1;
+    }
+    
+    // 메모리 시작 부분에 명령어 로드
+    Memory *memory = get_cpu_memory();
+    for (int i = 0; i < byte_count && i < MEMORY_SIZE; i++) {
+        memory->data[i] = bytes[i];
+    }
+    
+    // PC를 0으로 설정 (명령어 시작 위치)
+    CPU_Registers *regs = get_cpu_registers();
+    regs->pc = 0;
+    
+    printf("단일 명령어 로드 완료: %s (%d바이트)\n", assembly_code, byte_count);
+    
+    // 상태 전송
+    ws_send_cpu_state();
+    ws_send_memory_state();
+    ws_send_ack("단일 명령어 로드 완료");
+    
+    return 0;
+}
+
 // WebSocket 프로토콜 콜백
 static int callback_cpu_protocol(struct lws *wsi, enum lws_callback_reasons reason,
                                 void *user, void *in, size_t len) {
@@ -657,6 +803,12 @@ static int callback_cpu_protocol(struct lws *wsi, enum lws_callback_reasons reas
                             if (json_object_object_get_ex(root, "payload", &payload_obj)) {
                                 const char *program = json_object_get_string(payload_obj);
                                 ws_handle_program_load(program);
+                            }
+                        } else if (strcmp(type, "load_single_instruction") == 0) {
+                            json_object *payload_obj;
+                            if (json_object_object_get_ex(root, "payload", &payload_obj)) {
+                                const char *instruction = json_object_get_string(payload_obj);
+                                ws_handle_single_instruction_load(instruction);
                             }
                         } else if (strcmp(type, "step") == 0) {
                             ws_handle_step_execution();
