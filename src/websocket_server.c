@@ -13,7 +13,15 @@
 static ws_server_context_t server_ctx;
 static int server_running = 0;
 
-// 프로토콜 콜백 함수
+/*
+ * @brief CPU 프로토콜 콜백 함수
+ * @param wsi WebSocket 인스턴스
+ * @param reason 콜백 이유
+ * @param user 사용자 데이터
+ * @param in 입력 데이터
+ * @param len 데이터 길이
+ * @returns 콜백 처리 결과 (int)
+ */
 static int callback_cpu_protocol(struct lws *wsi, enum lws_callback_reasons reason,
                                 void *user, void *in, size_t len);
 
@@ -60,7 +68,11 @@ int ws_server_init(int port) {
     return 0;
 }
 
-// WebSocket 서버 정리
+/*
+ * @brief WebSocket 서버를 정리합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void ws_server_cleanup(void) {
     server_running = 0;
     if (server_ctx.context) {
@@ -70,7 +82,11 @@ void ws_server_cleanup(void) {
     pthread_mutex_destroy(&server_ctx.mutex);
 }
 
-// 클라이언트 추가
+/*
+ * @brief 새로운 클라이언트를 추가합니다
+ * @param wsi WebSocket 인스턴스
+ * @returns 클라이언트 ID, 실패 시 -1
+ */
 static int add_client(struct lws *wsi) {
     pthread_mutex_lock(&server_ctx.mutex);
     
@@ -97,7 +113,11 @@ static int add_client(struct lws *wsi) {
     return client_id;
 }
 
-// 클라이언트 제거
+/*
+ * @brief 클라이언트를 제거합니다
+ * @param wsi WebSocket 인스턴스
+ * @returns 없음 (void)
+ */
 static void remove_client(struct lws *wsi) {
     pthread_mutex_lock(&server_ctx.mutex);
     
@@ -118,7 +138,11 @@ static void remove_client(struct lws *wsi) {
     pthread_mutex_unlock(&server_ctx.mutex);
 }
 
-// 모든 클라이언트에게 메시지 전송
+/*
+ * @brief 모든 클라이언트에게 메시지를 전송합니다
+ * @param message 전송할 메시지
+ * @returns 없음 (void)
+ */
 static void broadcast_message(const char* message) {
     pthread_mutex_lock(&server_ctx.mutex);
     
@@ -138,7 +162,11 @@ static void broadcast_message(const char* message) {
     pthread_mutex_unlock(&server_ctx.mutex);
 }
 
-// 레지스터 이름을 번호로 변환
+/*
+ * @brief 레지스터 이름을 번호로 변환합니다
+ * @param reg_str 레지스터 문자열 (예: "R1")
+ * @returns 레지스터 번호 (1-7), 실패 시 -1
+ */
 int parse_register(const char* reg_str) {
     if (reg_str[0] == 'R' && strlen(reg_str) == 2) {
         int reg_num = reg_str[1] - '0';
@@ -149,7 +177,13 @@ int parse_register(const char* reg_str) {
     return -1; // 레지스터가 아님
 }
 
-// 어셈블리 코드를 바이트로 디코딩 (MOV 명령어 확실히 지원)
+/*
+ * @brief 어셈블리 코드를 바이트로 변환합니다
+ * @param assembly 어셈블리 코드 문자열
+ * @param output_bytes 출력 바이트 배열
+ * @param max_length 최대 출력 길이
+ * @returns 생성된 바이트 수, 실패 시 0
+ */
 int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int max_length) {
     if (!assembly || !output_bytes || max_length < 2) {
         return 0;
@@ -293,7 +327,14 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
     return 2;
 }
 
-// 바이트를 어셈블리 코드로 변환
+/*
+ * @brief 바이트를 어셈블리 코드로 변환합니다
+ * @param bytes 입력 바이트 배열
+ * @param byte_count 바이트 개수
+ * @param output_assembly 출력 어셈블리 문자열
+ * @param max_length 최대 출력 길이
+ * @returns 변환 성공 시 1, 실패 시 0
+ */
 int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_assembly, int max_length) {
     if (!bytes || byte_count < 2 || !output_assembly || max_length < 32) {
         return 0;
@@ -373,7 +414,11 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
     return 1;
 }
 
-// JSON 메시지 생성 함수들 - 모든 레지스터 포함
+/*
+ * @brief CPU 상태 JSON 메시지를 생성합니다
+ * @param 없음
+ * @returns JSON 객체 포인터
+ */
 json_object* create_state_message(void) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("state");
@@ -405,6 +450,11 @@ json_object* create_state_message(void) {
     return root;
 }
 
+/*
+ * @brief 메모리 상태 JSON 메시지를 생성합니다
+ * @param 없음
+ * @returns JSON 객체 포인터
+ */
 json_object* create_memory_message(void) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("memory");
@@ -425,6 +475,11 @@ json_object* create_memory_message(void) {
     return root;
 }
 
+/*
+ * @brief 캐시 상태 JSON 메시지를 생성합니다
+ * @param 없음
+ * @returns JSON 객체 포인터
+ */
 json_object* create_cache_message(void) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("cache");
@@ -468,6 +523,13 @@ json_object* create_cache_message(void) {
     return root;
 }
 
+/*
+ * @brief 실행 단계 JSON 메시지를 생성합니다
+ * @param instruction 실행된 명령어 문자열
+ * @param bytes 명령어 바이트 배열
+ * @param byte_count 바이트 개수
+ * @returns JSON 객체 포인터
+ */
 json_object* create_execution_message(const char* instruction, const uint8_t* bytes, int byte_count) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("execution");
@@ -490,6 +552,11 @@ json_object* create_execution_message(const char* instruction, const uint8_t* by
     return root;
 }
 
+/*
+ * @brief 확인 JSON 메시지를 생성합니다
+ * @param message 확인 메시지 문자열
+ * @returns JSON 객체 포인터
+ */
 json_object* create_ack_message(const char* message) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("ack");
@@ -501,6 +568,11 @@ json_object* create_ack_message(const char* message) {
     return root;
 }
 
+/*
+ * @brief 에러 JSON 메시지를 생성합니다
+ * @param error 에러 메시지 문자열
+ * @returns JSON 객체 포인터
+ */
 json_object* create_error_message(const char* error) {
     json_object *root = json_object_new_object();
     json_object *type = json_object_new_string("error");
@@ -513,6 +585,11 @@ json_object* create_error_message(const char* error) {
 }
 
 // 메시지 전송 함수들
+/*
+ * @brief CPU 상태를 모든 클라이언트에 전송합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void ws_send_cpu_state(void) {
     json_object *msg = create_state_message();
     const char *json_str = json_object_to_json_string(msg);
@@ -520,6 +597,11 @@ void ws_send_cpu_state(void) {
     json_object_put(msg);
 }
 
+/*
+ * @brief 메모리 상태를 모든 클라이언트에 전송합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void ws_send_memory_state(void) {
     json_object *msg = create_memory_message();
     const char *json_str = json_object_to_json_string(msg);
@@ -527,6 +609,11 @@ void ws_send_memory_state(void) {
     json_object_put(msg);
 }
 
+/*
+ * @brief 캐시 상태를 모든 클라이언트에 전송합니다
+ * @param 없음
+ * @returns 없음 (void)
+ */
 void ws_send_cache_state(void) {
     json_object *msg = create_cache_message();
     const char *json_str = json_object_to_json_string(msg);
@@ -534,6 +621,13 @@ void ws_send_cache_state(void) {
     json_object_put(msg);
 }
 
+/*
+ * @brief 실행 단계 정보를 모든 클라이언트에 전송합니다
+ * @param instruction 실행된 명령어 문자열
+ * @param bytes 명령어 바이트 배열
+ * @param byte_count 바이트 개수
+ * @returns 없음 (void)
+ */
 void ws_send_execution_step(const char* instruction, const uint8_t* bytes, int byte_count) {
     json_object *msg = create_execution_message(instruction, bytes, byte_count);
     const char *json_str = json_object_to_json_string(msg);
@@ -541,6 +635,11 @@ void ws_send_execution_step(const char* instruction, const uint8_t* bytes, int b
     json_object_put(msg);
 }
 
+/*
+ * @brief 확인 메시지를 모든 클라이언트에 전송합니다
+ * @param message 확인 메시지 문자열
+ * @returns 없음 (void)
+ */
 void ws_send_ack(const char* message) {
     json_object *msg = create_ack_message(message);
     const char *json_str = json_object_to_json_string(msg);
@@ -548,6 +647,11 @@ void ws_send_ack(const char* message) {
     json_object_put(msg);
 }
 
+/*
+ * @brief 에러 메시지를 모든 클라이언트에 전송합니다
+ * @param error_msg 에러 메시지 문자열
+ * @returns 없음 (void)
+ */
 void ws_send_error(const char* error_msg) {
     json_object *msg = create_error_message(error_msg);
     const char *json_str = json_object_to_json_string(msg);
@@ -555,7 +659,11 @@ void ws_send_error(const char* error_msg) {
     json_object_put(msg);
 }
 
-// 어셈블리 코드 처리
+/*
+ * @brief 어셈블리 코드를 처리합니다
+ * @param assembly_code 어셈블리 코드 문자열
+ * @returns 처리 성공 시 0, 실패 시 -1
+ */
 int ws_handle_assembly_code(const char* assembly_code) {
     uint8_t bytes[256];
     int byte_count = decode_assembly_to_bytes(assembly_code, bytes, sizeof(bytes));
@@ -583,6 +691,11 @@ int ws_handle_assembly_code(const char* assembly_code) {
 }
 
 // 프로그램 로드 처리 (여러 줄 어셈블리)
+/*
+ * @brief 프로그램을 로드합니다
+ * @param program_code 프로그램 코드 문자열
+ * @returns 로드 성공 시 0, 실패 시 -1
+ */
 int ws_handle_program_load(const char* program_code) {
     if (!program_code) {
         ws_send_error("프로그램 코드가 없습니다");
@@ -652,6 +765,11 @@ int ws_handle_program_load(const char* program_code) {
 }
 
 // 단계별 실행 처리
+/*
+ * @brief CPU를 한 단계 실행합니다
+ * @param 없음
+ * @returns 실행 성공 시 0, 실패 시 -1
+ */
 int ws_handle_step_execution(void) {
     printf("단계 실행 요청\n");
     
@@ -704,6 +822,11 @@ int ws_handle_step_execution(void) {
 }
 
 // CPU 리셋 처리
+/*
+ * @brief CPU를 리셋합니다
+ * @param 없음
+ * @returns 리셋 성공 시 0
+ */
 int ws_handle_cpu_reset(void) {
     printf("CPU 리셋 요청\n");
     
@@ -725,6 +848,11 @@ int ws_handle_cpu_reset(void) {
 }
 
 // 전체 프로그램 일괄 실행 처리
+/*
+ * @brief CPU를 모든 명령어가 완료될 때까지 실행합니다
+ * @param 없음
+ * @returns 실행 성공 시 0, 실패 시 -1
+ */
 int ws_handle_run_all(void) {
     printf("전체 프로그램 실행 요청\n");
     
@@ -797,6 +925,11 @@ int ws_handle_run_all(void) {
 }
 
 // 단일 명령어 로드 및 실행 준비
+/*
+ * @brief 단일 명령어를 로드합니다
+ * @param assembly_code 어셈블리 코드 문자열
+ * @returns 로드 성공 시 0, 실패 시 -1
+ */
 int ws_handle_single_instruction_load(const char* assembly_code) {
     printf("단일 명령어 로드 요청: %s\n", assembly_code);
     
@@ -922,6 +1055,11 @@ static int callback_cpu_protocol(struct lws *wsi, enum lws_callback_reasons reas
 }
 
 // 서버 실행
+/*
+ * @brief WebSocket 서버를 실행합니다
+ * @param 없음
+ * @returns 서버 종료 상태 (int)
+ */
 int ws_server_run(void) {
     while (server_running) {
         lws_service(server_ctx.context, 50);
