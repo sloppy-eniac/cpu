@@ -60,4 +60,26 @@ void reset_registers(CPU_Registers* regs) {
     regs->register5 = 0;
     regs->register6 = 0;
     regs->register7 = 0;
+    regs->overflow_flag = false;  // 캐리 플래그도 초기화
+}
+
+/*
+ * @brief 오버플로우 플래그를 설정합니다
+ * @param regs 레지스터 구조체 포인터
+ * @param value 설정할 플래그 값 (true/false)
+ * @returns 없음 (void)
+ */
+void set_overflow_flag(CPU_Registers* regs, bool value) {
+    if (!regs) return;
+    regs->overflow_flag = value;
+}
+
+/*
+ * @brief 오버플로우 플래그 값을 읽어옵니다
+ * @param regs 레지스터 구조체 포인터
+ * @returns 오버플로우 플래그 값 (true/false)
+ */
+bool get_overflow_flag(const CPU_Registers* regs) {
+    if (!regs) return false;
+    return regs->overflow_flag;
 }

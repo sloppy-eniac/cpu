@@ -10,6 +10,7 @@
 #define REGISTER_H
 
 #include <stdint.h>
+#include <stdbool.h>
 
 // 범용 레지스터
 // 다음 리스트는 그저 권장사항일 뿐이지, 사용하는 방법은 상관없다.
@@ -23,6 +24,7 @@ typedef struct
     uint8_t register5; // 목적지 인덱스: 문자열/배열 복사 시 목적지 주소
     uint8_t register6; // 베이스 포인터: 스택 프레임의 시작 주소를 가리킴 (지역 변수 접근)
     uint8_t register7; // 스택 포인터: 스택의 가장 윗부분을 가리킴 (PUSH, POP)
+    bool overflow_flag;   // 캐리 플래그: 덧셈 시 자리올림, 뺄셈 시 자리빌림 발생 시 설정
 } CPU_Registers;
 
 // 레지스터 번호 상수 (0~7)
@@ -47,5 +49,9 @@ uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num);
 
 // 모든 레지스터를 0으로 초기화
 void reset_registers(CPU_Registers* regs);
+
+// 캐리 플래그 설정/읽기 함수들
+void set_overflow_flag(CPU_Registers* regs, bool value);
+bool get_overflow_flag(const CPU_Registers* regs);
 
 #endif // REGISTER_H

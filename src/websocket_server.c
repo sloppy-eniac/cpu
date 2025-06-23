@@ -434,6 +434,7 @@ json_object* create_state_message(void) {
     json_object *reg5 = json_object_new_int(regs->register5);
     json_object *reg6 = json_object_new_int(regs->register6);
     json_object *reg7 = json_object_new_int(regs->register7);
+    json_object *overflow_flag = json_object_new_boolean(regs->overflow_flag);
     
     json_object_object_add(payload, "pc", pc);
     json_object_object_add(payload, "register1", reg1);
@@ -443,6 +444,7 @@ json_object* create_state_message(void) {
     json_object_object_add(payload, "register5", reg5);
     json_object_object_add(payload, "register6", reg6);
     json_object_object_add(payload, "register7", reg7);
+    json_object_object_add(payload, "overflow_flag", overflow_flag);
     
     json_object_object_add(root, "type", type);
     json_object_object_add(root, "payload", payload);
@@ -792,15 +794,35 @@ int ws_handle_step_execution(void) {
         }
     }
     
+    // 실행 전 오버플로우 플래그 상태 저장
+    bool prev_overflow_flag = get_overflow_flag(regs);
+    
     // CPU 한 단계 실행
     cpu_step();
     
-    // 실행 후 PC 확인
+    // 실행 후 PC와 플래그 상태 확인
     regs = get_cpu_registers();
+    bool current_overflow_flag = get_overflow_flag(regs);
+    
+    // 오버플로우 플래그 변화 감지 및 에러 메시지 전송
+    if (current_overflow_flag && !prev_overflow_flag) {
+        // 오버플로우 플래그가 새로 설정됨 - 오버플로우/언더플로우 발생
+        if (strstr(current_instruction, "SUB") || strstr(current_instruction, "sub")) {
+            ws_send_error("🚨 뺄셈 오버플로우 발생: 부호 있는 정수 범위를 벗어났습니다 (OF=1)");
+        } else if (strstr(current_instruction, "ADD") || strstr(current_instruction, "add")) {
+            ws_send_error("🚨 덧셈 오버플로우 발생: 부호 있는 정수 범위를 벗어났습니다 (OF=1)");
+        } else if (strstr(current_instruction, "MUL") || strstr(current_instruction, "mul")) {
+            ws_send_error("🚨 곱셈 오버플로우 발생: 부호 있는 정수 범위를 벗어났습니다 (OF=1)");
+        } else if (strstr(current_instruction, "DIV") || strstr(current_instruction, "div")) {
+            ws_send_error("🚨 나눗셈 에러가 발생했습니다 (OF=1)");
+        }
+    }
     
     // 실행된 명령어 정보 전송
     char step_msg[256];
-    snprintf(step_msg, sizeof(step_msg), "실행: %s | PC: %d -> %d", current_instruction, prev_pc, regs->pc);
+    const char* flag_status = current_overflow_flag ? " [OF=1]" : " [OF=0]";
+    snprintf(step_msg, sizeof(step_msg), "실행: %s | PC: %d -> %d%s", 
+             current_instruction, prev_pc, regs->pc, flag_status);
     
     // 실행 단계 전송 (실행된 명령어와 바이트 정보 포함)
     uint8_t executed_bytes[2] = {0, 0};
@@ -815,7 +837,14 @@ int ws_handle_step_execution(void) {
     ws_send_memory_state();
     ws_send_cache_state();
     
-    ws_send_ack("단계 실행 완료");
+    // 완료 메시지에 플래그 상태 포함
+    char completion_msg[128];
+    if (current_overflow_flag) {
+        snprintf(completion_msg, sizeof(completion_msg), "단계 실행 완료 (경고: 오버플로우 플래그 설정됨)");
+    } else {
+        snprintf(completion_msg, sizeof(completion_msg), "단계 실행 완료");
+    }
+    ws_send_ack(completion_msg);
     printf("단계 실행 성공: %s | PC %d -> %d\n", current_instruction, prev_pc, regs->pc);
     
     return 0;

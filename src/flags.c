@@ -1,27 +1,36 @@
 #include "include/flags.h"
+#include "include/register.h"
 #include <stdbool.h>
 #include <stdint.h>
 
 /*
  * @brief 덧셈 연산에서 캐리 플래그를 설정합니다
+ * @param regs CPU 레지스터 구조체 포인터
  * @param a 첫 번째 피연산자
  * @param result 덧셈 결과
  * @returns 없음 (void)
  */
-void add_flag(uint8_t a, uint8_t result)
+void add_flag(CPU_Registers* regs, uint8_t a, uint8_t result)
 {
-    *cf = (result < a);  // 오버플로우 검사: 결과가 첫 번째 피연산자보다 작으면 캐리 발생
+    if (!regs) return;
+    // 오버플로우 검사: 결과가 첫 번째 피연산자보다 작으면 캐리 발생
+    bool carry = (result < a);
+    set_carry_flag(regs, carry);
 }
 
 /*
  * @brief 뺄셈 연산에서 캐리 플래그를 설정합니다
+ * @param regs CPU 레지스터 구조체 포인터
  * @param a 피감수 (첫 번째 피연산자)
  * @param b 감수 (두 번째 피연산자)
  * @returns 없음 (void)
  */
-void subtraction_flag(uint8_t a, uint8_t b)
+void subtraction_flag(CPU_Registers* regs, uint8_t a, uint8_t b)
 {
-    *cf = (a < b);  // 언더플로우 검사: 첫 번째 피연산자가 두 번째보다 작으면 캐리 발생
+    if (!regs) return;
+    // 언더플로우 검사: 첫 번째 피연산자가 두 번째보다 작으면 캐리 발생
+    bool carry = (a < b);
+    set_carry_flag(regs, carry);
 }
 
 // 이제 결과 보여줄때 캐리값 같이 보여주면 되는거임!!
