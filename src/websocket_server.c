@@ -217,6 +217,30 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
         }
     }
     
+    // 🚀 ADD/SUB/MUL/DIV 명령어 - 레지스터 지원 향상
+    if (opcode >= 0 && opcode <= 3) {
+        // 두 피연산자가 모두 레지스터인지 확인
+        if (operand1_str[0] == 'R' && operand2_str[0] == 'R' && 
+            strlen(operand1_str) == 2 && strlen(operand2_str) == 2) {
+            
+            int reg1_num = operand1_str[1] - '0';
+            int reg2_num = operand2_str[1] - '0';
+            
+            if (reg1_num >= 1 && reg1_num <= 7 && reg2_num >= 1 && reg2_num <= 7) {
+                // 새로운 레지스터 포맷: 4비트 opcode + 4비트 reg1 + 4비트 reg2 + 4비트 플래그(1111)
+                uint16_t instruction_word = (opcode << 12) | (reg1_num << 8) | (reg2_num << 4) | 0xF;
+                
+                output_bytes[0] = (instruction_word >> 8) & 0xFF;
+                output_bytes[1] = instruction_word & 0xFF;
+                
+                printf("🚀 ALU 레지스터 인코딩: %s -> reg1=%d, reg2=%d -> 바이트: 0x%02X 0x%02X\n", 
+                       assembly, reg1_num, reg2_num, output_bytes[0], output_bytes[1]);
+                
+                return 2;
+            }
+        }
+    }
+    
     // 다른 명령어들 (기존 방식)
     uint8_t reg1_val, reg2_val = 0;
     
@@ -273,10 +297,8 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
     
     uint16_t instruction_word = (bytes[0] << 8) | bytes[1];
     
-    // **원래 방식 그대로**: 4비트 opcode + 6비트 reg1 + 6비트 reg2
+    // 4비트 opcode 추출
     uint8_t opcode = (instruction_word >> 12) & 0xF;
-    uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
-    uint8_t reg2_val = instruction_word & 0x3F;
     
     const char* op_name;
     switch (opcode) {
@@ -287,6 +309,47 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
         case 4: op_name = "MOV"; break;
         default: return 0;
     }
+    
+    // 🎯 MOV 명령어 특별 처리
+    if (opcode == 4) {
+        // MOV 레지스터, 즉시값: 4비트 opcode + 4비트 레지스터 + 8비트 즉시값
+        uint8_t reg_num = (instruction_word >> 8) & 0xF;
+        uint8_t immediate_val = instruction_word & 0xFF;
+        
+        // 레지스터 번호가 1-7 범위인지 확인
+        if (reg_num >= 1 && reg_num <= 7) {
+            snprintf(output_assembly, max_length, "%s R%d, %d", op_name, reg_num, immediate_val);
+            printf("🎯 MOV 디코딩: 바이트 0x%02X 0x%02X -> %s\n", bytes[0], bytes[1], output_assembly);
+            return 1;
+        }
+        // 기존 방식 (메모리 주소)으로 디코딩 시도
+        else {
+            uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
+            uint8_t reg2_val = instruction_word & 0x3F;
+            
+            char reg1_str[16], reg2_str[16];
+            
+            if (reg1_val > 100) {
+                snprintf(reg1_str, sizeof(reg1_str), "R%d", reg1_val - 100);
+            } else {
+                snprintf(reg1_str, sizeof(reg1_str), "%d", reg1_val);
+            }
+            
+            if (reg2_val > 100) {
+                snprintf(reg2_str, sizeof(reg2_str), "R%d", reg2_val - 100);
+            } else {
+                snprintf(reg2_str, sizeof(reg2_str), "%d", reg2_val);
+            }
+            
+            snprintf(output_assembly, max_length, "%s %s, %s", op_name, reg1_str, reg2_str);
+            printf("📊 MOV 메모리 디코딩: 바이트 0x%02X 0x%02X -> %s\n", bytes[0], bytes[1], output_assembly);
+            return 1;
+        }
+    }
+    
+    // 다른 명령어들 (기존 방식): 4비트 opcode + 6비트 reg1 + 6비트 reg2
+    uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
+    uint8_t reg2_val = instruction_word & 0x3F;
     
     char reg1_str[16], reg2_str[16];
     

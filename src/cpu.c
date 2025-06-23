@@ -105,6 +105,51 @@ void decode_and_execute(uint16_t instruction) {
         }
     }
     
+    // 🚀 ADD/SUB/MUL/DIV 명령어 새로운 레지스터 포맷 처리
+    if (opcode >= 0 && opcode <= 3) {
+        uint8_t flag = instruction & 0xF;
+        
+        // 새로운 레지스터 포맷인지 확인 (플래그가 0xF)
+        if (flag == 0xF) {
+            uint8_t reg1_num = (instruction >> 8) & 0xF;
+            uint8_t reg2_num = (instruction >> 4) & 0xF;
+            
+            if (reg1_num >= 1 && reg1_num <= 7 && reg2_num >= 1 && reg2_num <= 7) {
+                printf("🚀 새로운 ALU 포맷: R%d %s R%d\n", reg1_num, 
+                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", reg2_num);
+                
+                // 레지스터에서 값 읽기
+                uint8_t operand1 = get_register(&regs, reg1_num);
+                uint8_t operand2 = get_register(&regs, reg2_num);
+                
+                printf("값: R%d(%d) %s R%d(%d)\n", reg1_num, operand1, 
+                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", reg2_num, operand2);
+                
+                // ALU 연산 수행
+                uint8_t result = handler_table[opcode](operand1, operand2);
+                
+                printf("결과: %d %s %d = %d\n", operand1, 
+                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", operand2, result);
+                
+                // 결과를 R7에 저장 (결과 레지스터)
+                set_register(&regs, 7, result);
+                
+                printf("✅ ALU 완료: R7 = %d (결과 저장됨!)\n", result);
+                
+                // 모든 레지스터 상태 출력 (디버깅용)
+                printf("전체 레지스터 상태:\n");
+                for (int i = 1; i <= 7; i++) {
+                    printf("  R%d = %d\n", i, get_register(&regs, i));
+                }
+                
+                regs.pc += 2;
+                printf("PC: %d\n", regs.pc);
+                printf("====================\n\n");
+                return;
+            }
+        }
+    }
+
     // 기존 방식: 4비트 opcode + 6비트 reg1 + 6비트 reg2
     uint8_t reg1_val = (instruction >> 6) & 0x3F;
     uint8_t reg2_val = instruction & 0x3F;
