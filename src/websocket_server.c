@@ -804,7 +804,7 @@ int ws_handle_run_all(void) {
     Memory *memory = get_cpu_memory();
     int initial_pc = regs->pc;
     int step_count = 0;
-    int max_steps = 16; // 최대 16단계까지 실행 (무한 루프 방지)
+    int max_steps = 100; // 최대 100단계까지 실행 (무한 루프 방지)
     
     // 실행 시작 메시지 전송
     ws_send_execution_step("전체 프로그램 실행 시작", NULL, 0);
@@ -839,9 +839,13 @@ int ws_handle_run_all(void) {
         
         // 실행 단계 정보 전송
         ws_send_execution_step(step_msg, instruction_bytes, 2);
-        
+
+        // 매 스텝마다 상태 전송 (실시간 반영)
+        ws_send_cpu_state();
+        ws_send_memory_state();
+
         // 잠시 대기 (시각적 효과를 위해)
-        usleep(200000); // 200ms 대기
+        usleep(300000); // 300ms 대기
         
         step_count++;
     }

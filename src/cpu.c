@@ -185,7 +185,12 @@ void decode_and_execute(uint16_t instruction) {
         uint8_t diff = operand1 - operand2;
 
         set_zero_flag(&regs, diff == 0);
-        set_overflow_flag(&regs, operand2 > operand1);
+
+        // signed 오버플로우: SUB와 동일한 판정
+        bool sign_a = (operand1 & 0x80) != 0;
+        bool sign_b = (operand2 & 0x80) != 0;
+        bool sign_r = (diff & 0x80) != 0;
+        set_overflow_flag(&regs, (!sign_a && sign_b && sign_r) || (sign_a && !sign_b && !sign_r));
 
         printf("CMP: R%d(%d) vs %s → ZF=%d, OF=%d\n",
                rd, operand1, operand2_str,
