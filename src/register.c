@@ -60,7 +60,8 @@ void reset_registers(CPU_Registers* regs) {
     regs->register5 = 0;
     regs->register6 = 0;
     regs->register7 = 0;
-    regs->overflow_flag = false;  // 캐리 플래그도 초기화
+    regs->overflow_flag = false;
+    regs->zero_flag = false;
 }
 
 /*
@@ -82,4 +83,14 @@ void set_overflow_flag(CPU_Registers* regs, bool value) {
 bool get_overflow_flag(const CPU_Registers* regs) {
     if (!regs) return false;
     return regs->overflow_flag;
+}
+
+void set_zero_flag(CPU_Registers* regs, bool value) {
+    if (!regs) return;
+    regs->zero_flag = value;
+}
+
+bool get_zero_flag(const CPU_Registers* regs) {
+    if (!regs) return false;
+    return regs->zero_flag;
 }

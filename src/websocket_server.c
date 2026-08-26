@@ -211,12 +211,33 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
     else if (strcmp(instruction, "MUL") == 0) opcode = 2;
     else if (strcmp(instruction, "DIV") == 0) opcode = 3;
     else if (strcmp(instruction, "MOV") == 0) opcode = 4;
+    else if (strcmp(instruction, "CMP") == 0) opcode = 5;
+    else if (strcmp(instruction, "JMP") == 0) opcode = 6;
+    else if (strcmp(instruction, "JE") == 0) opcode = 7;
+    else if (strcmp(instruction, "JNE") == 0) opcode = 8;
     else {
         printf("알 수 없는 명령어: %s\n", instruction);
         return 0;
     }
 
-    // 첫 번째 피연산자는 반드시 레지스터
+    uint16_t instruction_word;
+
+    // JMP/JE/JNE: 피연산자가 주소 하나뿐
+    if (opcode >= 6 && opcode <= 8) {
+        int address = atoi(operand1_str);
+        if (address < 0 || address > 255) {
+            printf("주소 범위 오류 (0~255): %d\n", address);
+            return 0;
+        }
+        instruction_word = (opcode << 12) | (address & 0xFF);
+        printf("Jump: %s %d -> 0x%04X\n", instruction, address, instruction_word);
+
+        output_bytes[0] = (instruction_word >> 8) & 0xFF;
+        output_bytes[1] = instruction_word & 0xFF;
+        return 2;
+    }
+
+    // ADD/SUB/MUL/DIV/MOV/CMP: 첫 번째 피연산자는 반드시 레지스터
     if (operand1_str[0] != 'R' || strlen(operand1_str) != 2) {
         printf("첫 번째 피연산자는 레지스터여야 합니다 (R1~R7): %s\n", operand1_str);
         return 0;
@@ -226,8 +247,6 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
         printf("잘못된 레지스터 번호 (R1~R7): %s\n", operand1_str);
         return 0;
     }
-
-    uint16_t instruction_word;
 
     if (parsed >= 3 && operand2_str[0] == 'R' && strlen(operand2_str) == 2) {
         // Type R: 레지스터 + 레지스터
@@ -281,7 +300,18 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
         case 2: op_name = "MUL"; break;
         case 3: op_name = "DIV"; break;
         case 4: op_name = "MOV"; break;
+        case 5: op_name = "CMP"; break;
+        case 6: op_name = "JMP"; break;
+        case 7: op_name = "JE"; break;
+        case 8: op_name = "JNE"; break;
         default: return 0;
+    }
+
+    // JMP/JE/JNE: 주소만 표시
+    if (opcode >= 6 && opcode <= 8) {
+        uint8_t address = instruction_word & 0xFF;
+        snprintf(output_assembly, max_length, "%s %d", op_name, address);
+        return 1;
     }
 
     if (mode == 1) {
@@ -318,7 +348,8 @@ json_object* create_state_message(void) {
     json_object *reg6 = json_object_new_int(regs->register6);
     json_object *reg7 = json_object_new_int(regs->register7);
     json_object *overflow_flag = json_object_new_boolean(regs->overflow_flag);
-    
+    json_object *zero_flag = json_object_new_boolean(regs->zero_flag);
+
     json_object_object_add(payload, "pc", pc);
     json_object_object_add(payload, "register1", reg1);
     json_object_object_add(payload, "register2", reg2);
@@ -328,6 +359,7 @@ json_object* create_state_message(void) {
     json_object_object_add(payload, "register6", reg6);
     json_object_object_add(payload, "register7", reg7);
     json_object_object_add(payload, "overflow_flag", overflow_flag);
+    json_object_object_add(payload, "zero_flag", zero_flag);
     
     json_object_object_add(root, "type", type);
     json_object_object_add(root, "payload", payload);

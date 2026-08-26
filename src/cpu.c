@@ -89,7 +89,7 @@ uint16_t fetch_instruction(void) {
  *   Type I (즉시값):   [opcode:4][0:1][Rd:3][immediate:8]
  *   Type R (레지스터): [opcode:4][1:1][Rd:3][Rs:3][unused:5]
  *
- * opcode: ADD=0, SUB=1, MUL=2, DIV=3, MOV=4
+ * opcode: ADD=0, SUB=1, MUL=2, DIV=3, MOV=4, CMP=5, JMP=6, JE=7, JNE=8
  */
 void decode_and_execute(uint16_t instruction) {
     uint8_t opcode = (instruction >> 12) & 0xF;
@@ -97,6 +97,40 @@ void decode_and_execute(uint16_t instruction) {
     uint8_t rd     = (instruction >> 8)  & 0x7;
 
     printf("\n=== 명령어 디코딩 ===\n");
+
+    // JMP/JE/JNE: 레지스터 불필요, 주소만 사용
+    if (opcode >= 6 && opcode <= 8) {
+        uint8_t address = instruction & 0xFF;
+        const char* jmp_names[] = {NULL, NULL, NULL, NULL, NULL, NULL, "JMP", "JE", "JNE"};
+
+        printf("바이트: 0x%04X | %s %d\n", instruction, jmp_names[opcode], address);
+
+        bool do_jump = false;
+        if (opcode == 6) {
+            // JMP: 무조건 점프
+            do_jump = true;
+            printf("JMP: 무조건 주소 %d로 점프\n", address);
+        } else if (opcode == 7) {
+            // JE: ZF=1이면 점프 (같으면 점프)
+            do_jump = get_zero_flag(&regs);
+            printf("JE: ZF=%d → %s\n", do_jump, do_jump ? "점프" : "통과");
+        } else if (opcode == 8) {
+            // JNE: ZF=0이면 점프 (다르면 점프)
+            do_jump = !get_zero_flag(&regs);
+            printf("JNE: ZF=%d → %s\n", !do_jump, do_jump ? "점프" : "통과");
+        }
+
+        if (do_jump) {
+            regs.pc = address;
+            printf("PC = %d (점프)\n", regs.pc);
+        } else {
+            regs.pc += 2;
+            printf("PC = %d (다음 명령어)\n", regs.pc);
+        }
+        printf("====================\n\n");
+        return;
+    }
+
     printf("바이트: 0x%04X | opcode=%d, mode=%s, Rd=R%d\n",
            instruction, opcode, mode ? "REG" : "IMM", rd);
 
@@ -137,7 +171,6 @@ void decode_and_execute(uint16_t instruction) {
         printf("%s: R%d(%d) %c %s = %d\n",
                op_names[opcode], rd, operand1, op_chars[opcode], operand2_str, result);
 
-        // 결과를 목적지 레지스터(Rd)에 저장
         set_register(&regs, rd, result);
         printf("R%d = %d\n", rd, result);
 
@@ -145,6 +178,18 @@ void decode_and_execute(uint16_t instruction) {
         // MOV: 값을 목적지 레지스터에 저장
         set_register(&regs, rd, operand2);
         printf("MOV: R%d = %s\n", rd, operand2_str);
+
+    } else if (opcode == 5) {
+        // CMP: 두 값을 빼서 플래그만 설정 (결과 저장 안 함)
+        uint8_t operand1 = get_register(&regs, rd);
+        uint8_t diff = operand1 - operand2;
+
+        set_zero_flag(&regs, diff == 0);
+        set_overflow_flag(&regs, operand2 > operand1);
+
+        printf("CMP: R%d(%d) vs %s → ZF=%d, OF=%d\n",
+               rd, operand1, operand2_str,
+               get_zero_flag(&regs), get_overflow_flag(&regs));
 
     } else {
         printf("알 수 없는 opcode: %d\n", opcode);
@@ -155,7 +200,7 @@ void decode_and_execute(uint16_t instruction) {
     for (int i = 1; i <= 7; i++) {
         printf("R%d=%d ", i, get_register(&regs, i));
     }
-    printf("\n");
+    printf("| ZF=%d OF=%d\n", get_zero_flag(&regs), get_overflow_flag(&regs));
 
     regs.pc += 2;
     printf("PC: %d\n", regs.pc);

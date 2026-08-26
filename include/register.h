@@ -24,7 +24,8 @@ typedef struct
     uint8_t register5; // 목적지 인덱스: 문자열/배열 복사 시 목적지 주소
     uint8_t register6; // 베이스 포인터: 스택 프레임의 시작 주소를 가리킴 (지역 변수 접근)
     uint8_t register7; // 스택 포인터: 스택의 가장 윗부분을 가리킴 (PUSH, POP)
-    bool overflow_flag;   // 캐리 플래그: 덧셈 시 자리올림, 뺄셈 시 자리빌림 발생 시 설정
+    bool overflow_flag;   // 오버플로 플래그: 연산 결과가 범위를 벗어나면 설정
+    bool zero_flag;       // 제로 플래그: CMP 결과가 같으면 설정 (JE/JNE에서 사용)
 } CPU_Registers;
 
 // 레지스터 번호 상수 (0~7)
@@ -50,8 +51,10 @@ uint8_t get_register(const CPU_Registers* regs, uint8_t reg_num);
 // 모든 레지스터를 0으로 초기화
 void reset_registers(CPU_Registers* regs);
 
-// 캐리 플래그 설정/읽기 함수들
+// 플래그 설정/읽기 함수들
 void set_overflow_flag(CPU_Registers* regs, bool value);
 bool get_overflow_flag(const CPU_Registers* regs);
+void set_zero_flag(CPU_Registers* regs, bool value);
+bool get_zero_flag(const CPU_Registers* regs);
 
 #endif // REGISTER_H
