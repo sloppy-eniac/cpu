@@ -15,7 +15,7 @@ void add_flag(CPU_Registers* regs, uint8_t a, uint8_t result)
     if (!regs) return;
     // 오버플로우 검사: 결과가 첫 번째 피연산자보다 작으면 캐리 발생
     bool carry = (result < a);
-    set_carry_flag(regs, carry);
+    set_overflow_flag(regs, carry);
 }
 
 /*
@@ -30,7 +30,7 @@ void subtraction_flag(CPU_Registers* regs, uint8_t a, uint8_t b)
     if (!regs) return;
     // 언더플로우 검사: 첫 번째 피연산자가 두 번째보다 작으면 캐리 발생
     bool carry = (a < b);
-    set_carry_flag(regs, carry);
+    set_overflow_flag(regs, carry);
 }
 
 // 이제 결과 보여줄때 캐리값 같이 보여주면 되는거임!!
