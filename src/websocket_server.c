@@ -184,146 +184,76 @@ int parse_register(const char* reg_str) {
  * @param max_length 최대 출력 길이
  * @returns 생성된 바이트 수, 실패 시 0
  */
+/*
+ * 명령어 포맷 (16비트):
+ *   Type I (즉시값):   [opcode:4][0:1][Rd:3][immediate:8]
+ *   Type R (레지스터): [opcode:4][1:1][Rd:3][Rs:3][unused:5]
+ *
+ * opcode: ADD=0, SUB=1, MUL=2, DIV=3, MOV=4
+ * 첫 번째 피연산자는 반드시 레지스터 (R1~R7)
+ */
 int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int max_length) {
-    if (!assembly || !output_bytes || max_length < 2) {
-        return 0;
-    }
-    
+    if (!assembly || !output_bytes || max_length < 2) return 0;
+
     char instruction[32];
     char operand1_str[32], operand2_str[32];
-    
+
     int parsed = sscanf(assembly, "%s %31[^,], %31s", instruction, operand1_str, operand2_str);
-    
     if (parsed < 2) {
-        printf("❌ 파싱 실패: %s\n", assembly);
+        printf("파싱 실패: %s\n", assembly);
         return 0;
     }
-    
-    uint8_t opcode = 0;
+
+    // opcode 결정
+    uint8_t opcode;
     if (strcmp(instruction, "ADD") == 0) opcode = 0;
     else if (strcmp(instruction, "SUB") == 0) opcode = 1;
     else if (strcmp(instruction, "MUL") == 0) opcode = 2;
     else if (strcmp(instruction, "DIV") == 0) opcode = 3;
     else if (strcmp(instruction, "MOV") == 0) opcode = 4;
     else {
-        printf("❌ 알 수 없는 명령어: %s\n", instruction);
+        printf("알 수 없는 명령어: %s\n", instruction);
         return 0;
     }
-    
-    // 🎯 MOV 명령어 특별 처리 (레지스터 + 8비트 즉시값 지원)
-    if (opcode == 4) {
-        // MOV 레지스터, 즉시값 형태 처리
-        if (operand1_str[0] == 'R' && strlen(operand1_str) == 2) {
-            int reg_num = operand1_str[1] - '0';
-            if (reg_num >= 1 && reg_num <= 7) {
-                int immediate_val = atoi(operand2_str);
-                if (immediate_val < 0 || immediate_val > 255) {
-                    printf("❌ 즉시값 범위 오류 (0-255): %d\n", immediate_val);
-                    return 0;
-                }
-                
-                // MOV 레지스터, 즉시값: 4비트 opcode + 4비트 레지스터 + 8비트 즉시값
-                uint16_t instruction_word = (opcode << 12) | (reg_num << 8) | (immediate_val & 0xFF);
-                
-                output_bytes[0] = (instruction_word >> 8) & 0xFF;
-                output_bytes[1] = instruction_word & 0xFF;
-                
-                printf("🎯 MOV 인코딩: %s -> 레지스터=%d, 즉시값=%d -> 바이트: 0x%02X 0x%02X\n", 
-                       assembly, reg_num, immediate_val, output_bytes[0], output_bytes[1]);
-                
-                return 2;
-            } else {
-                printf("❌ 잘못된 레지스터: %s\n", operand1_str);
-                return 0;
-            }
-        }
-        // MOV 메모리, 즉시값 형태는 기존 방식 사용
-        else {
-            uint8_t reg1_val = atoi(operand1_str);
-            uint8_t reg2_val = (parsed == 3) ? atoi(operand2_str) : 0;
-            
-            if (reg1_val > 63) reg1_val = 63;
-            if (reg2_val > 63) reg2_val = 63;
-            
-            uint16_t instruction_word = (opcode << 12) | ((reg1_val & 0x3F) << 6) | (reg2_val & 0x3F);
-            
-            output_bytes[0] = (instruction_word >> 8) & 0xFF;
-            output_bytes[1] = instruction_word & 0xFF;
-            
-            printf("📊 MOV 메모리 인코딩: %s -> 바이트: 0x%02X 0x%02X\n", assembly, output_bytes[0], output_bytes[1]);
-            return 2;
-        }
+
+    // 첫 번째 피연산자는 반드시 레지스터
+    if (operand1_str[0] != 'R' || strlen(operand1_str) != 2) {
+        printf("첫 번째 피연산자는 레지스터여야 합니다 (R1~R7): %s\n", operand1_str);
+        return 0;
     }
-    
-    // 🚀 ADD/SUB/MUL/DIV 명령어 - 레지스터 지원 향상
-    if (opcode >= 0 && opcode <= 3) {
-        // 두 피연산자가 모두 레지스터인지 확인
-        if (operand1_str[0] == 'R' && operand2_str[0] == 'R' && 
-            strlen(operand1_str) == 2 && strlen(operand2_str) == 2) {
-            
-            int reg1_num = operand1_str[1] - '0';
-            int reg2_num = operand2_str[1] - '0';
-            
-            if (reg1_num >= 1 && reg1_num <= 7 && reg2_num >= 1 && reg2_num <= 7) {
-                // 새로운 레지스터 포맷: 4비트 opcode + 4비트 reg1 + 4비트 reg2 + 4비트 플래그(1111)
-                uint16_t instruction_word = (opcode << 12) | (reg1_num << 8) | (reg2_num << 4) | 0xF;
-                
-                output_bytes[0] = (instruction_word >> 8) & 0xFF;
-                output_bytes[1] = instruction_word & 0xFF;
-                
-                printf("🚀 ALU 레지스터 인코딩: %s -> reg1=%d, reg2=%d -> 바이트: 0x%02X 0x%02X\n", 
-                       assembly, reg1_num, reg2_num, output_bytes[0], output_bytes[1]);
-                
-                return 2;
-            }
-        }
+    int rd = operand1_str[1] - '0';
+    if (rd < 1 || rd > 7) {
+        printf("잘못된 레지스터 번호 (R1~R7): %s\n", operand1_str);
+        return 0;
     }
-    
-    // 다른 명령어들 (기존 방식)
-    uint8_t reg1_val, reg2_val = 0;
-    
-    // 첫 번째 피연산자: 레지스터인지 확인
-    if (operand1_str[0] == 'R' && strlen(operand1_str) == 2) {
-        int reg_num = operand1_str[1] - '0';
-        if (reg_num >= 1 && reg_num <= 7) {
-            reg1_val = 100 + reg_num;  // R1=101, R2=102, ..., R7=107
-            printf("🎯 첫 번째: %s -> 인코딩 %d\n", operand1_str, reg1_val);
-        } else {
-            printf("❌ 잘못된 레지스터: %s\n", operand1_str);
+
+    uint16_t instruction_word;
+
+    if (parsed >= 3 && operand2_str[0] == 'R' && strlen(operand2_str) == 2) {
+        // Type R: 레지스터 + 레지스터
+        int rs = operand2_str[1] - '0';
+        if (rs < 1 || rs > 7) {
+            printf("잘못된 소스 레지스터 (R1~R7): %s\n", operand2_str);
             return 0;
         }
-    } else {
-        reg1_val = atoi(operand1_str);
-        if (reg1_val > 63) reg1_val = 63;
-        printf("📊 첫 번째: 즉시값 %d\n", reg1_val);
-    }
-    
-    // 두 번째 피연산자
-    if (parsed == 3) {
-        if (operand2_str[0] == 'R' && strlen(operand2_str) == 2) {
-            int reg_num = operand2_str[1] - '0';
-            if (reg_num >= 1 && reg_num <= 7) {
-                reg2_val = 100 + reg_num;
-                printf("🎯 두 번째: %s -> 인코딩 %d\n", operand2_str, reg2_val);
-            } else {
-                printf("❌ 잘못된 레지스터: %s\n", operand2_str);
-                return 0;
-            }
-        } else {
-            reg2_val = atoi(operand2_str);
-            if (reg2_val > 63) reg2_val = 63;
-            printf("📊 두 번째: 즉시값 %d\n", reg2_val);
+        instruction_word = (opcode << 12) | (1 << 11) | (rd << 8) | (rs << 5);
+        printf("Type R: %s R%d, R%d -> 0x%04X\n", instruction, rd, rs, instruction_word);
+    } else if (parsed >= 3) {
+        // Type I: 레지스터 + 즉시값
+        int imm = atoi(operand2_str);
+        if (imm < 0 || imm > 255) {
+            printf("즉시값 범위 오류 (0~255): %d\n", imm);
+            return 0;
         }
+        instruction_word = (opcode << 12) | (0 << 11) | (rd << 8) | (imm & 0xFF);
+        printf("Type I: %s R%d, %d -> 0x%04X\n", instruction, rd, imm, instruction_word);
+    } else {
+        printf("두 번째 피연산자가 필요합니다: %s\n", assembly);
+        return 0;
     }
-    
-    // 인코딩
-    uint16_t instruction_word = (opcode << 12) | ((reg1_val & 0x3F) << 6) | (reg2_val & 0x3F);
-    
+
     output_bytes[0] = (instruction_word >> 8) & 0xFF;
     output_bytes[1] = instruction_word & 0xFF;
-    
-    printf("파싱 성공: %s -> 바이트: 0x%02X 0x%02X\n", assembly, output_bytes[0], output_bytes[1]);
-    
     return 2;
 }
 
@@ -336,15 +266,14 @@ int decode_assembly_to_bytes(const char* assembly, uint8_t* output_bytes, int ma
  * @returns 변환 성공 시 1, 실패 시 0
  */
 int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_assembly, int max_length) {
-    if (!bytes || byte_count < 2 || !output_assembly || max_length < 32) {
-        return 0;
-    }
-    
+    if (!bytes || byte_count < 2 || !output_assembly || max_length < 32) return 0;
+
     uint16_t instruction_word = (bytes[0] << 8) | bytes[1];
-    
-    // 4비트 opcode 추출
+
     uint8_t opcode = (instruction_word >> 12) & 0xF;
-    
+    uint8_t mode   = (instruction_word >> 11) & 0x1;
+    uint8_t rd     = (instruction_word >> 8)  & 0x7;
+
     const char* op_name;
     switch (opcode) {
         case 0: op_name = "ADD"; break;
@@ -354,63 +283,17 @@ int decode_bytes_to_assembly(const uint8_t* bytes, int byte_count, char* output_
         case 4: op_name = "MOV"; break;
         default: return 0;
     }
-    
-    // 🎯 MOV 명령어 특별 처리
-    if (opcode == 4) {
-        // MOV 레지스터, 즉시값: 4비트 opcode + 4비트 레지스터 + 8비트 즉시값
-        uint8_t reg_num = (instruction_word >> 8) & 0xF;
-        uint8_t immediate_val = instruction_word & 0xFF;
-        
-        // 레지스터 번호가 1-7 범위인지 확인
-        if (reg_num >= 1 && reg_num <= 7) {
-            snprintf(output_assembly, max_length, "%s R%d, %d", op_name, reg_num, immediate_val);
-            printf("🎯 MOV 디코딩: 바이트 0x%02X 0x%02X -> %s\n", bytes[0], bytes[1], output_assembly);
-            return 1;
-        }
-        // 기존 방식 (메모리 주소)으로 디코딩 시도
-        else {
-            uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
-            uint8_t reg2_val = instruction_word & 0x3F;
-            
-            char reg1_str[16], reg2_str[16];
-            
-            if (reg1_val > 100) {
-                snprintf(reg1_str, sizeof(reg1_str), "R%d", reg1_val - 100);
-            } else {
-                snprintf(reg1_str, sizeof(reg1_str), "%d", reg1_val);
-            }
-            
-            if (reg2_val > 100) {
-                snprintf(reg2_str, sizeof(reg2_str), "R%d", reg2_val - 100);
-            } else {
-                snprintf(reg2_str, sizeof(reg2_str), "%d", reg2_val);
-            }
-            
-            snprintf(output_assembly, max_length, "%s %s, %s", op_name, reg1_str, reg2_str);
-            printf("📊 MOV 메모리 디코딩: 바이트 0x%02X 0x%02X -> %s\n", bytes[0], bytes[1], output_assembly);
-            return 1;
-        }
-    }
-    
-    // 다른 명령어들 (기존 방식): 4비트 opcode + 6비트 reg1 + 6비트 reg2
-    uint8_t reg1_val = (instruction_word >> 6) & 0x3F;
-    uint8_t reg2_val = instruction_word & 0x3F;
-    
-    char reg1_str[16], reg2_str[16];
-    
-    if (reg1_val > 100) {
-        snprintf(reg1_str, sizeof(reg1_str), "R%d", reg1_val - 100);
+
+    if (mode == 1) {
+        // Type R: 레지스터 + 레지스터
+        uint8_t rs = (instruction_word >> 5) & 0x7;
+        snprintf(output_assembly, max_length, "%s R%d, R%d", op_name, rd, rs);
     } else {
-        snprintf(reg1_str, sizeof(reg1_str), "%d", reg1_val);
+        // Type I: 레지스터 + 즉시값
+        uint8_t imm = instruction_word & 0xFF;
+        snprintf(output_assembly, max_length, "%s R%d, %d", op_name, rd, imm);
     }
-    
-    if (reg2_val > 100) {
-        snprintf(reg2_str, sizeof(reg2_str), "R%d", reg2_val - 100);
-    } else {
-        snprintf(reg2_str, sizeof(reg2_str), "%d", reg2_val);
-    }
-    
-    snprintf(output_assembly, max_length, "%s %s, %s", op_name, reg1_str, reg2_str);
+
     return 1;
 }
 

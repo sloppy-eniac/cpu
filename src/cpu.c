@@ -84,176 +84,78 @@ uint16_t fetch_instruction(void) {
  * @brief 명령어를 디코드하고 실행합니다
  * @param instruction 실행할 16비트 명령어
  * @returns 없음 (void)
+ *
+ * 명령어 포맷 (16비트):
+ *   Type I (즉시값):   [opcode:4][0:1][Rd:3][immediate:8]
+ *   Type R (레지스터): [opcode:4][1:1][Rd:3][Rs:3][unused:5]
+ *
+ * opcode: ADD=0, SUB=1, MUL=2, DIV=3, MOV=4
  */
 void decode_and_execute(uint16_t instruction) {
-    // 4비트 opcode 추출
     uint8_t opcode = (instruction >> 12) & 0xF;
+    uint8_t mode   = (instruction >> 11) & 0x1;
+    uint8_t rd     = (instruction >> 8)  & 0x7;
 
     printf("\n=== 명령어 디코딩 ===\n");
-    printf("바이트: 0x%04X -> opcode=%d\n", instruction, opcode);
+    printf("바이트: 0x%04X | opcode=%d, mode=%s, Rd=R%d\n",
+           instruction, opcode, mode ? "REG" : "IMM", rd);
 
-    // 🎯 MOV 명령어 특별 처리
-    if (opcode == 4) {
-        // MOV 레지스터, 즉시값: 4비트 opcode + 4비트 레지스터 + 8비트 즉시값
-        uint8_t reg_num = (instruction >> 8) & 0xF;
-        uint8_t immediate_val = instruction & 0xFF;
-        
-        // 레지스터 번호가 1-7 범위인지 확인 (새로운 MOV 포맷)
-        if (reg_num >= 1 && reg_num <= 7) {
-            printf("🎯 새로운 MOV 포맷: R%d에 값 %d 저장\n", reg_num, immediate_val);
-            
-            // 레지스터에 값 저장
-            set_register(&regs, reg_num, immediate_val);
-            
-            // 저장 확인
-            uint8_t stored_value = get_register(&regs, reg_num);
-            printf("✅ MOV 완료: R%d = %d (저장됨!)\n", reg_num, stored_value);
-            
-            // 모든 레지스터 상태 출력 (디버깅용)
-            printf("전체 레지스터 상태:\n");
-            for (int i = 1; i <= 7; i++) {
-                printf("  R%d = %d\n", i, get_register(&regs, i));
-            }
-            
+    if (rd < 1 || rd > 7) {
+        printf("잘못된 목적지 레지스터: %d\n", rd);
+        regs.pc += 2;
+        return;
+    }
+
+    // 두 번째 피연산자 결정
+    uint8_t operand2;
+    char operand2_str[16];
+
+    if (mode == 1) {
+        // Type R: 레지스터 + 레지스터
+        uint8_t rs = (instruction >> 5) & 0x7;
+        if (rs < 1 || rs > 7) {
+            printf("잘못된 소스 레지스터: %d\n", rs);
             regs.pc += 2;
-            printf("PC: %d\n", regs.pc);
-            printf("====================\n\n");
             return;
         }
-        // 기존 MOV 포맷으로 처리 (메모리 주소)
-        else {
-            printf("📊 기존 MOV 포맷으로 처리\n");
-        }
-    }
-    
-    // 🚀 ADD/SUB/MUL/DIV 명령어 새로운 레지스터 포맷 처리
-    if (opcode >= 0 && opcode <= 3) {
-        uint8_t flag = instruction & 0xF;
-        
-        // 새로운 레지스터 포맷인지 확인 (플래그가 0xF)
-        if (flag == 0xF) {
-            uint8_t reg1_num = (instruction >> 8) & 0xF;
-            uint8_t reg2_num = (instruction >> 4) & 0xF;
-            
-            if (reg1_num >= 1 && reg1_num <= 7 && reg2_num >= 1 && reg2_num <= 7) {
-                printf("🚀 새로운 ALU 포맷: R%d %s R%d\n", reg1_num, 
-                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", reg2_num);
-                
-                // 레지스터에서 값 읽기
-                uint8_t operand1 = get_register(&regs, reg1_num);
-                uint8_t operand2 = get_register(&regs, reg2_num);
-                
-                printf("값: R%d(%d) %s R%d(%d)\n", reg1_num, operand1, 
-                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", reg2_num, operand2);
-                
-                // ALU 연산 수행
-                uint8_t result = handler_table[opcode](operand1, operand2);
-                
-                printf("결과: %d %s %d = %d\n", operand1, 
-                       (opcode == 0) ? "+" : (opcode == 1) ? "-" : (opcode == 2) ? "*" : "/", operand2, result);
-                
-                // 결과를 R7에 저장 (결과 레지스터)
-                set_register(&regs, 7, result);
-                
-                printf("✅ ALU 완료: R7 = %d (결과 저장됨!)\n", result);
-                
-                // 모든 레지스터 상태 출력 (디버깅용)
-                printf("전체 레지스터 상태:\n");
-                for (int i = 1; i <= 7; i++) {
-                    printf("  R%d = %d\n", i, get_register(&regs, i));
-                }
-                
-                regs.pc += 2;
-                printf("PC: %d\n", regs.pc);
-                printf("====================\n\n");
-                return;
-            }
-        }
-    }
-
-    // 기존 방식: 4비트 opcode + 6비트 reg1 + 6비트 reg2
-    uint8_t reg1_val = (instruction >> 6) & 0x3F;
-    uint8_t reg2_val = instruction & 0x3F;
-
-    printf("기존 포맷: reg1=%d, reg2=%d\n", reg1_val, reg2_val);
-
-    uint8_t operand1, operand2;
-    
-    // 첫 번째 피연산자 해석
-    if (reg1_val >= 101 && reg1_val <= 107) {
-        // 레지스터 (R1=101, R2=102, ..., R7=107)
-        uint8_t reg_num = reg1_val - 100;
-        operand1 = get_register(&regs, reg_num);
-        printf("첫 번째: R%d (현재값=%d)\n", reg_num, operand1);
+        operand2 = get_register(&regs, rs);
+        snprintf(operand2_str, sizeof(operand2_str), "R%d(%d)", rs, operand2);
     } else {
-        // 즉시값 또는 메모리 주소
-        operand1 = reg1_val;
-        printf("첫 번째: 즉시값/주소 %d\n", operand1);
-    }
-    
-    // 두 번째 피연산자 해석
-    if (reg2_val >= 101 && reg2_val <= 107) {
-        // 레지스터
-        uint8_t reg_num = reg2_val - 100;
-        operand2 = get_register(&regs, reg_num);
-        printf("두 번째: R%d (현재값=%d)\n", reg_num, operand2);
-    } else {
-        // 즉시값
-        operand2 = reg2_val;
-        printf("두 번째: 즉시값 %d\n", operand2);
+        // Type I: 레지스터 + 즉시값
+        operand2 = instruction & 0xFF;
+        snprintf(operand2_str, sizeof(operand2_str), "%d", operand2);
     }
 
-    // 명령어 실행
-    if (opcode < 4) {
-        // ALU 연산
-        uint8_t result = handler_table[opcode](operand1, operand2);
-        
-        set_register(&regs, 1, operand1);  // R1 = 첫 번째 피연산자
-        set_register(&regs, 2, operand2);  // R2 = 두 번째 피연산자  
-        set_register(&regs, 7, result);    // resultR = 결과
-        
-        if (70 + opcode < MEMORY_SIZE) {
-            memory.data[70 + opcode] = result;
-        }
-        
-        printf("✅ %s 연산: %d %c %d = %d\n", 
-               (opcode == 0) ? "ADD" : (opcode == 1) ? "SUB" : (opcode == 2) ? "MUL" : "DIV",
-               operand1, (opcode == 0) ? '+' : (opcode == 1) ? '-' : (opcode == 2) ? '*' : '/',
-               operand2, result);
-               
+    if (opcode <= 3) {
+        // ALU 연산: ADD(0), SUB(1), MUL(2), DIV(3)
+        const char* op_names[] = {"ADD", "SUB", "MUL", "DIV"};
+        const char  op_chars[] = {'+', '-', '*', '/'};
+
+        uint8_t operand1 = get_register(&regs, rd);
+        uint8_t result   = handler_table[opcode](operand1, operand2);
+
+        printf("%s: R%d(%d) %c %s = %d\n",
+               op_names[opcode], rd, operand1, op_chars[opcode], operand2_str, result);
+
+        // 결과를 목적지 레지스터(Rd)에 저장
+        set_register(&regs, rd, result);
+        printf("R%d = %d\n", rd, result);
+
     } else if (opcode == 4) {
-        // 기존 MOV 명령어 (메모리 주소)
-        if (reg1_val >= 101 && reg1_val <= 107) {
-            // 🎯 MOV R4, 50 형태 → 레지스터에 값 저장
-            uint8_t target_reg = reg1_val - 100;
-            
-            printf("📝 기존 MOV 실행 중: R%d에 값 %d 저장...\n", target_reg, operand2);
-            
-            // 레지스터에 값 저장
-            set_register(&regs, target_reg, operand2);
-            
-            // 저장 확인
-            uint8_t stored_value = get_register(&regs, target_reg);
-            printf("✅ MOV 완료: R%d = %d (저장됨!)\n", target_reg, stored_value);
-            
-            // 모든 레지스터 상태 출력 (디버깅용)
-            printf("전체 레지스터 상태:\n");
-            for (int i = 1; i <= 7; i++) {
-                printf("  R%d = %d\n", i, get_register(&regs, i));
-            }
-            
-        } else {
-            // 🗃️ MOV 255, 32 형태 → 메모리에 값 저장
-            printf("📝 MOV 실행 중: 메모리[%d]에 값 %d 저장...\n", operand1, operand2);
-            
-            if (operand1 < MEMORY_SIZE) {
-                memory.data[operand1] = operand2;
-                printf("✅ MOV 완료: 메모리[%d] = %d (저장됨!)\n", operand1, operand2);
-            } else {
-                printf("❌ MOV 실패: 메모리 주소 %d 범위 초과\n", operand1);
-            }
-        }
+        // MOV: 값을 목적지 레지스터에 저장
+        set_register(&regs, rd, operand2);
+        printf("MOV: R%d = %s\n", rd, operand2_str);
+
+    } else {
+        printf("알 수 없는 opcode: %d\n", opcode);
     }
+
+    // 레지스터 상태 출력
+    printf("전체 레지스터: ");
+    for (int i = 1; i <= 7; i++) {
+        printf("R%d=%d ", i, get_register(&regs, i));
+    }
+    printf("\n");
 
     regs.pc += 2;
     printf("PC: %d\n", regs.pc);
@@ -294,12 +196,12 @@ void cpu_run(void) {
  * @returns 없음 (void)
  */
 void cpu(void) {
-    // 샘플 프로그램 버퍼
+    // 샘플 프로그램: MOV R1,10 → MOV R2,20 → ADD R1,R2 → SUB R1,R2
     uint8_t sample_program[] = {
-        0x01, 0x05,  // ADD: opcode=0, reg1=1, reg2=5
-        0x23, 0x07,  // SUB: opcode=2, reg1=3, reg2=7
-        0x14, 0x02,  // ADD: opcode=1, reg1=4, reg2=2
-        0x30, 0x01   // MUL: opcode=3, reg1=0, reg2=1
+        0x41, 0x0A,  // MOV R1, 10  (Type I: opcode=4, mode=0, rd=1, imm=10)
+        0x42, 0x14,  // MOV R2, 20  (Type I: opcode=4, mode=0, rd=2, imm=20)
+        0x09, 0x40,  // ADD R1, R2  (Type R: opcode=0, mode=1, rd=1, rs=2)
+        0x19, 0x40   // SUB R1, R2  (Type R: opcode=1, mode=1, rd=1, rs=2)
     };
     
     cpu_init();
